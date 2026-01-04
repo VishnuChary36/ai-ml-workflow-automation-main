@@ -733,7 +733,7 @@ print("Prediction:", result["prediction"])`}
                     <p className="text-blue-600 text-sm">Get the full API documentation including all required features</p>
                   </div>
                   <a 
-                    href={`http://localhost:8000/api/predict/${modelId}/info`}
+                    href={`${import.meta.env.VITE_API_URL || 'http://localhost:8000'}/api/predict/${modelId}/info`}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition flex items-center"

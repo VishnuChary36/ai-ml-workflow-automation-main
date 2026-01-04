@@ -1,0 +1,14 @@
+[build]
+builder = "NIXPACKS"
+
+[build.nixpacksPlan.phases.setup]
+nixPkgs = ["nodejs-18_x"]
+
+[build.nixpacksPlan.phases.install]
+cmds = ["npm install --legacy-peer-deps"]
+
+[build.nixpacksPlan.phases.build]
+cmds = ["npm run build"]
+
+[deploy]
+startCommand = "npx serve dist -s -l $PORT"
