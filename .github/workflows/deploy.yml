@@ -1,0 +1,507 @@
+name: Deploy Pipeline
+
+on:
+  push:
+    branches: [main]
+    tags:
+      - "v*"
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: "Deployment environment"
+        required: true
+        default: "staging"
+        type: choice
+        options:
+          - staging
+          - production
+      deployment_strategy:
+        description: "Deployment strategy"
+        required: true
+        default: "canary"
+        type: choice
+        options:
+          - canary
+          - blue-green
+          - rolling
+      canary_percentage:
+        description: "Canary traffic percentage (for canary deployments)"
+        required: false
+        default: "10"
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+  INFERENCE_IMAGE: ${{ github.repository }}-inference
+
+jobs:
+  # ============================================================================
+  # Build and Test
+  # ============================================================================
+  test:
+    name: Run Tests
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_DB: mlworkflow_test
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+          cache: "pip"
+
+      - name: Install dependencies
+        run: |
+          cd backend
+          pip install -r requirements.txt
+          pip install pytest pytest-asyncio pytest-cov httpx
+
+      - name: Run unit tests
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/mlworkflow_test
+          REDIS_URL: redis://localhost:6379/0
+          SECRET_KEY: test-secret-key
+        run: |
+          cd backend
+          pytest tests/ -v --cov=. --cov-report=xml
+
+      - name: Run contract tests
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/mlworkflow_test
+          REDIS_URL: redis://localhost:6379/0
+        run: |
+          cd backend
+          pytest tests/test_contracts.py -v
+
+      - name: Upload coverage
+        uses: codecov/codecov-action@v3
+        with:
+          files: backend/coverage.xml
+          fail_ci_if_error: false
+
+  # ============================================================================
+  # Build Docker Images
+  # ============================================================================
+  build-images:
+    name: Build Docker Images
+    runs-on: ubuntu-latest
+    needs: test
+    permissions:
+      contents: read
+      packages: write
+
+    outputs:
+      backend_tag: ${{ steps.meta-backend.outputs.tags }}
+      inference_tag: ${{ steps.meta-inference.outputs.tags }}
+      version: ${{ steps.version.outputs.version }}
+      sha_short: ${{ steps.version.outputs.sha_short }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Generate version
+        id: version
+        run: |
+          SHA_SHORT=$(git rev-parse --short HEAD)
+
+          if [[ "${{ github.ref }}" == refs/tags/* ]]; then
+            VERSION="${{ github.ref_name }}"
+          else
+            VERSION="v0.0.0-${SHA_SHORT}"
+          fi
+
+          echo "version=${VERSION}" >> $GITHUB_OUTPUT
+          echo "sha_short=${SHA_SHORT}" >> $GITHUB_OUTPUT
+          echo "Generated version: ${VERSION}+${SHA_SHORT}"
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      # Backend image metadata
+      - name: Extract backend metadata
+        id: meta-backend
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          tags: |
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=sha,prefix=
+            type=raw,value=${{ steps.version.outputs.version }}+${{ steps.version.outputs.sha_short }}
+
+      # Inference image metadata
+      - name: Extract inference metadata
+        id: meta-inference
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.INFERENCE_IMAGE }}
+          tags: |
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=sha,prefix=
+            type=raw,value=model:${{ steps.version.outputs.version }}+${{ steps.version.outputs.sha_short }}
+
+      # Build and push backend image
+      - name: Build and push backend image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: infra/Dockerfile.backend
+          push: true
+          tags: ${{ steps.meta-backend.outputs.tags }}
+          labels: ${{ steps.meta-backend.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      # Build and push inference image
+      - name: Build and push inference image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: infra/Dockerfile.inference
+          push: true
+          tags: ${{ steps.meta-inference.outputs.tags }}
+          labels: ${{ steps.meta-inference.outputs.labels }}
+          target: production
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  # ============================================================================
+  # Deploy to Staging
+  # ============================================================================
+  deploy-staging:
+    name: Deploy to Staging
+    runs-on: ubuntu-latest
+    needs: build-images
+    if: github.ref == 'refs/heads/main' || github.event.inputs.environment == 'staging'
+    environment:
+      name: staging
+      url: https://staging-ml.example.com
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up kubectl
+        uses: azure/setup-kubectl@v3
+        with:
+          version: "v1.28.0"
+
+      - name: Configure kubeconfig
+        run: |
+          mkdir -p ~/.kube
+          echo "${{ secrets.STAGING_KUBECONFIG }}" | base64 -d > ~/.kube/config
+
+      - name: Deploy to staging
+        run: |
+          # Update image tags in manifests
+          export IMAGE_TAG="${{ needs.build-images.outputs.version }}+${{ needs.build-images.outputs.sha_short }}"
+          export INFERENCE_IMAGE="${{ env.REGISTRY }}/${{ env.INFERENCE_IMAGE }}:model:${IMAGE_TAG}"
+          export BACKEND_IMAGE="${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${IMAGE_TAG}"
+
+          # Apply Kubernetes manifests
+          envsubst < infra/k8s/staging/deployment.yaml | kubectl apply -f -
+
+          # Wait for rollout
+          kubectl rollout status deployment/ml-workflow-backend -n ml-staging --timeout=300s
+          kubectl rollout status deployment/ml-inference -n ml-staging --timeout=300s
+
+      - name: Run smoke tests
+        run: |
+          # Wait for pods to be ready
+          sleep 30
+
+          # Health check
+          curl -f https://staging-ml.example.com/health || exit 1
+
+          # Ready check
+          curl -f https://staging-ml.example.com/ready || exit 1
+
+          # API check
+          curl -f https://staging-ml.example.com/api/health || exit 1
+
+          echo "Staging smoke tests passed!"
+
+  # ============================================================================
+  # Deploy to Production (Canary)
+  # ============================================================================
+  deploy-production-canary:
+    name: Deploy to Production (Canary)
+    runs-on: ubuntu-latest
+    needs: [build-images, deploy-staging]
+    if: |
+      (startsWith(github.ref, 'refs/tags/v') || github.event.inputs.environment == 'production') &&
+      (github.event.inputs.deployment_strategy == 'canary' || github.event.inputs.deployment_strategy == '')
+    environment:
+      name: production-canary
+      url: https://ml.example.com
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up kubectl
+        uses: azure/setup-kubectl@v3
+
+      - name: Configure kubeconfig
+        run: |
+          mkdir -p ~/.kube
+          echo "${{ secrets.PRODUCTION_KUBECONFIG }}" | base64 -d > ~/.kube/config
+
+      - name: Deploy canary
+        run: |
+          export IMAGE_TAG="${{ needs.build-images.outputs.version }}+${{ needs.build-images.outputs.sha_short }}"
+          export CANARY_WEIGHT="${{ github.event.inputs.canary_percentage || '10' }}"
+
+          echo "Deploying canary with ${CANARY_WEIGHT}% traffic"
+
+          # Deploy canary pods
+          envsubst < infra/k8s/production/canary-deployment.yaml | kubectl apply -f -
+
+          # Update traffic split
+          kubectl patch virtualservice ml-workflow \
+            -n ml-production \
+            --type=merge \
+            -p "{\"spec\":{\"http\":[{\"route\":[{\"destination\":{\"host\":\"ml-workflow\",\"subset\":\"stable\"},\"weight\":$((100-CANARY_WEIGHT))},{\"destination\":{\"host\":\"ml-workflow\",\"subset\":\"canary\"},\"weight\":${CANARY_WEIGHT}}]}]}}"
+
+          # Wait for canary pods
+          kubectl rollout status deployment/ml-workflow-canary -n ml-production --timeout=300s
+
+      - name: Run canary smoke tests
+        run: |
+          sleep 30
+
+          # Test canary endpoint directly
+          CANARY_POD=$(kubectl get pod -n ml-production -l app=ml-workflow,version=canary -o jsonpath='{.items[0].metadata.name}')
+
+          kubectl exec -n ml-production $CANARY_POD -- curl -f http://localhost:8000/health
+          kubectl exec -n ml-production $CANARY_POD -- curl -f http://localhost:8000/ready
+
+          echo "Canary smoke tests passed!"
+
+      - name: Monitor canary metrics
+        run: |
+          echo "Monitoring canary for 5 minutes..."
+
+          for i in {1..10}; do
+            sleep 30
+            
+            # Check error rate (would use actual metrics in production)
+            ERROR_RATE=$(kubectl logs -n ml-production -l app=ml-workflow,version=canary --tail=100 | grep -c "ERROR" || echo "0")
+            
+            if [ "$ERROR_RATE" -gt 10 ]; then
+              echo "High error rate detected: ${ERROR_RATE}. Triggering rollback."
+              exit 1
+            fi
+            
+            echo "Check ${i}/10: Error rate = ${ERROR_RATE}"
+          done
+
+          echo "Canary monitoring passed!"
+
+      - name: Promote canary to stable
+        if: success()
+        run: |
+          export IMAGE_TAG="${{ needs.build-images.outputs.version }}+${{ needs.build-images.outputs.sha_short }}"
+
+          # Update stable deployment with canary image
+          envsubst < infra/k8s/production/stable-deployment.yaml | kubectl apply -f -
+
+          # Wait for stable rollout
+          kubectl rollout status deployment/ml-workflow-stable -n ml-production --timeout=300s
+
+          # Route all traffic to stable
+          kubectl patch virtualservice ml-workflow \
+            -n ml-production \
+            --type=merge \
+            -p '{"spec":{"http":[{"route":[{"destination":{"host":"ml-workflow","subset":"stable"},"weight":100}]}]}}'
+
+          # Scale down canary
+          kubectl scale deployment/ml-workflow-canary -n ml-production --replicas=0
+
+          echo "Canary promoted to stable successfully!"
+
+      - name: Rollback on failure
+        if: failure()
+        run: |
+          echo "Rolling back canary deployment..."
+
+          # Route all traffic back to stable
+          kubectl patch virtualservice ml-workflow \
+            -n ml-production \
+            --type=merge \
+            -p '{"spec":{"http":[{"route":[{"destination":{"host":"ml-workflow","subset":"stable"},"weight":100}]}]}}'
+
+          # Delete canary deployment
+          kubectl delete deployment ml-workflow-canary -n ml-production --ignore-not-found
+
+          echo "Rollback completed!"
+
+  # ============================================================================
+  # Deploy to Production (Blue-Green)
+  # ============================================================================
+  deploy-production-blue-green:
+    name: Deploy to Production (Blue-Green)
+    runs-on: ubuntu-latest
+    needs: [build-images, deploy-staging]
+    if: |
+      (startsWith(github.ref, 'refs/tags/v') || github.event.inputs.environment == 'production') &&
+      github.event.inputs.deployment_strategy == 'blue-green'
+    environment:
+      name: production-blue-green
+      url: https://ml.example.com
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up kubectl
+        uses: azure/setup-kubectl@v3
+
+      - name: Configure kubeconfig
+        run: |
+          mkdir -p ~/.kube
+          echo "${{ secrets.PRODUCTION_KUBECONFIG }}" | base64 -d > ~/.kube/config
+
+      - name: Determine current active color
+        id: current
+        run: |
+          CURRENT=$(kubectl get service ml-workflow -n ml-production -o jsonpath='{.spec.selector.color}' 2>/dev/null || echo "blue")
+          if [ "$CURRENT" == "blue" ]; then
+            TARGET="green"
+          else
+            TARGET="blue"
+          fi
+          echo "current=${CURRENT}" >> $GITHUB_OUTPUT
+          echo "target=${TARGET}" >> $GITHUB_OUTPUT
+          echo "Current: ${CURRENT}, Deploying to: ${TARGET}"
+
+      - name: Deploy to inactive color
+        run: |
+          export IMAGE_TAG="${{ needs.build-images.outputs.version }}+${{ needs.build-images.outputs.sha_short }}"
+          export COLOR="${{ steps.current.outputs.target }}"
+
+          echo "Deploying to ${COLOR} environment"
+
+          envsubst < infra/k8s/production/blue-green-deployment.yaml | kubectl apply -f -
+
+          kubectl rollout status deployment/ml-workflow-${COLOR} -n ml-production --timeout=300s
+
+      - name: Run pre-switch tests
+        run: |
+          COLOR="${{ steps.current.outputs.target }}"
+
+          # Test inactive deployment directly
+          kubectl port-forward -n ml-production svc/ml-workflow-${COLOR} 8888:8000 &
+          PF_PID=$!
+          sleep 5
+
+          curl -f http://localhost:8888/health
+          curl -f http://localhost:8888/ready
+
+          kill $PF_PID
+
+          echo "Pre-switch tests passed!"
+
+      - name: Switch traffic
+        run: |
+          COLOR="${{ steps.current.outputs.target }}"
+
+          echo "Switching traffic to ${COLOR}"
+
+          # Update service selector
+          kubectl patch service ml-workflow \
+            -n ml-production \
+            --type=merge \
+            -p "{\"spec\":{\"selector\":{\"color\":\"${COLOR}\"}}}"
+
+          echo "Traffic switched to ${COLOR}!"
+
+      - name: Run post-switch tests
+        run: |
+          sleep 10
+
+          curl -f https://ml.example.com/health
+          curl -f https://ml.example.com/api/health
+
+          echo "Post-switch tests passed!"
+
+      - name: Cleanup old deployment
+        if: success()
+        run: |
+          OLD_COLOR="${{ steps.current.outputs.current }}"
+
+          echo "Scaling down ${OLD_COLOR} deployment"
+          kubectl scale deployment/ml-workflow-${OLD_COLOR} -n ml-production --replicas=0
+
+      - name: Rollback on failure
+        if: failure()
+        run: |
+          OLD_COLOR="${{ steps.current.outputs.current }}"
+
+          echo "Rolling back to ${OLD_COLOR}"
+
+          kubectl patch service ml-workflow \
+            -n ml-production \
+            --type=merge \
+            -p "{\"spec\":{\"selector\":{\"color\":\"${OLD_COLOR}\"}}}"
+
+          echo "Rollback completed!"
+
+  # ============================================================================
+  # Post-Deployment Notifications
+  # ============================================================================
+  notify:
+    name: Send Notifications
+    runs-on: ubuntu-latest
+    needs:
+      [
+        build-images,
+        deploy-staging,
+        deploy-production-canary,
+        deploy-production-blue-green,
+      ]
+    if: always()
+
+    steps:
+      - name: Notify Slack
+        if: always()
+        uses: 8398a7/action-slack@v3
+        with:
+          status: ${{ job.status }}
+          fields: repo,message,commit,author,action,eventName,ref,workflow
+          text: |
+            Deployment ${{ needs.build-images.outputs.version }}
+            Image: model:${{ needs.build-images.outputs.version }}+${{ needs.build-images.outputs.sha_short }}
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}

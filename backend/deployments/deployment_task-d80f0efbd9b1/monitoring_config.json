@@ -1,0 +1,166 @@
+{
+  "baseline_statistics": {
+    "Name": {
+      "type": "categorical",
+      "distribution": {
+        "djsnake": 0.002,
+        "darshanravaldz": 0.002,
+        "jaybnow.hr": 0.002,
+        "acunilicali": 0.002,
+        "jensenackles": 0.002,
+        "yaocabrera": 0.002,
+        "pledis_boos": 0.002,
+        "nasa": 0.002,
+        "anupamaparameswaran96": 0.002,
+        "i_m_hendery": 0.002,
+        "streetartglobe": 0.002,
+        "barbieferreira": 0.002,
+        "psg": 0.002,
+        "ridwankamil": 0.002,
+        "angelinajolie": 0.002,
+        "marshmello": 0.002,
+        "momo": 0.002,
+        "angeldimariajm": 0.002,
+        "kashikakapoor09": 0.002,
+        "nehasharmaofficial": 0.002
+      },
+      "n_unique": 962
+    },
+    "Rank": {
+      "type": "numeric",
+      "mean": 500.5,
+      "std": 288.8194360957494,
+      "min": 1.0,
+      "max": 1000.0,
+      "percentiles": {
+        "25": 250.75,
+        "50": 500.5,
+        "75": 750.25
+      }
+    },
+    "Followers": {
+      "type": "categorical",
+      "distribution": {
+        "7.3M": 0.014,
+        "6.9M": 0.013,
+        "9M": 0.011,
+        "7.4M": 0.009,
+        "9.4M": 0.009,
+        "13.5M": 0.009,
+        "9.8M": 0.009,
+        "8.1M": 0.009,
+        "6.3M": 0.009,
+        "9.6M": 0.009,
+        "14.1M": 0.008,
+        "7.6M": 0.008,
+        "11.6M": 0.008,
+        "13.9M": 0.008,
+        "12.2M": 0.007,
+        "14.2M": 0.007,
+        "8.5M": 0.007,
+        "10.7M": 0.007,
+        "7M": 0.007,
+        "9.9M": 0.007
+      },
+      "n_unique": 415
+    },
+    "Audience Country": {
+      "type": "categorical",
+      "distribution": {
+        "United States": 0.28093306288032455,
+        "India": 0.1612576064908722,
+        "Brazil": 0.14705882352941177,
+        "Indonesia": 0.13793103448275862,
+        "Mexico": 0.04056795131845842,
+        "Spain": 0.034482758620689655,
+        "Russia": 0.02636916835699797,
+        "Argentina": 0.02332657200811359,
+        "Iran": 0.02129817444219067,
+        "Turkey": 0.02028397565922921,
+        "United Kingdom": 0.017241379310344827,
+        "Italy": 0.016227180527383367,
+        "South Korea": 0.013184584178498986,
+        "Colombia": 0.008113590263691683,
+        "Philippines": 0.007099391480730223,
+        "Thailand": 0.006085192697768763,
+        "France": 0.006085192697768763,
+        "Egypt": 0.005070993914807302,
+        "Iraq": 0.004056795131845842,
+        "Germany": 0.004056795131845842
+      },
+      "n_unique": 33
+    },
+    "Authentic Engagement": {
+      "type": "categorical",
+      "distribution": {
+        "0": 0.02,
+        "1.2M": 0.018,
+        "1.1M": 0.012,
+        "1.3M": 0.01,
+        "1.7M": 0.006,
+        "1.4M": 0.006,
+        "2.1M": 0.005,
+        "2.4M": 0.005,
+        "1M": 0.005,
+        "3M": 0.004,
+        "2.2M": 0.003,
+        "1.5M": 0.003,
+        "1.6M": 0.003,
+        "87.3K": 0.003,
+        "137.9K": 0.003,
+        "417.9K": 0.002,
+        "102K": 0.002,
+        "216.4K": 0.002,
+        "364.2K": 0.002,
+        "113.6K": 0.002
+      },
+      "n_unique": 836
+    },
+    "Engagement Avg.": {
+      "type": "categorical",
+      "distribution": {
+        "1.1M": 0.029,
+        "1.2M": 0.02,
+        "1.4M": 0.017,
+        "1M": 0.016,
+        "1.3M": 0.011,
+        "1.6M": 0.011,
+        "1.5M": 0.011,
+        "1.8M": 0.008,
+        "1.9M": 0.006,
+        "2.2M": 0.005,
+        "3.1M": 0.005,
+        "2.1M": 0.005,
+        "2.4M": 0.005,
+        "2.5M": 0.004,
+        "1.7M": 0.004,
+        "2.9M": 0.003,
+        "2.6M": 0.003,
+        "269.6K": 0.002,
+        "95.8K": 0.002,
+        "465.2K": 0.002
+      },
+      "n_unique": 809
+    }
+  },
+  "drift_thresholds": {
+    "psi_threshold": 0.2,
+    "ks_threshold": 0.1,
+    "chi2_threshold": 0.05
+  },
+  "monitoring_features": [
+    "Name",
+    "Rank",
+    "Followers",
+    "Audience Country",
+    "Authentic Engagement",
+    "Engagement Avg."
+  ],
+  "alert_config": {
+    "email_alerts": false,
+    "slack_alerts": false,
+    "log_alerts": true
+  },
+  "check_interval_minutes": 60,
+  "created_at": "2025-12-28T17:36:38.073999"
+}

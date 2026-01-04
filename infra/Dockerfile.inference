@@ -1,0 +1,98 @@
+# Dockerfile for ML Inference Service
+# Optimized for production model serving
+
+FROM python:3.10-slim as base
+
+# Set environment variables
+ENV PYTHONDONTWRITEBYTECODE=1 \
+  PYTHONUNBUFFERED=1 \
+  PYTHONFAULTHANDLER=1 \
+  PIP_NO_CACHE_DIR=1 \
+  PIP_DISABLE_PIP_VERSION_CHECK=1
+
+WORKDIR /app
+
+# Install system dependencies
+RUN apt-get update && apt-get install -y --no-install-recommends \
+  curl \
+  && rm -rf /var/lib/apt/lists/*
+
+# ============================================================================
+# Builder stage - install Python dependencies
+# ============================================================================
+FROM base as builder
+
+# Install build dependencies
+RUN apt-get update && apt-get install -y --no-install-recommends \
+  build-essential \
+  && rm -rf /var/lib/apt/lists/*
+
+# Create virtual environment
+RUN python -m venv /opt/venv
+ENV PATH="/opt/venv/bin:$PATH"
+
+# Install Python dependencies
+COPY requirements.inference.txt .
+RUN pip install --no-cache-dir -r requirements.inference.txt
+
+# ============================================================================
+# Production stage
+# ============================================================================
+FROM base as production
+
+# Copy virtual environment from builder
+COPY --from=builder /opt/venv /opt/venv
+ENV PATH="/opt/venv/bin:$PATH"
+
+# Create non-root user for security
+RUN groupadd -r inference && useradd -r -g inference inference
+
+# Copy application code
+COPY backend/inference_app.py .
+COPY backend/schemas/ ./schemas/
+COPY backend/core/ ./core/
+COPY backend/config.py .
+
+# Create directories for models and logs
+RUN mkdir -p /app/models /app/logs && \
+  chown -R inference:inference /app
+
+# Switch to non-root user
+USER inference
+
+# Expose port
+EXPOSE 8080
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
+  CMD curl -f http://localhost:8080/health || exit 1
+
+# Default environment variables
+ENV MODEL_DIR=/app/models \
+  INFERENCE_HOST=0.0.0.0 \
+  INFERENCE_PORT=8080 \
+  INFERENCE_WORKERS=1 \
+  AUTH_ENABLED=true \
+  RATE_LIMIT_ENABLED=true \
+  LOG_PREDICTIONS=true
+
+# Run the inference service
+CMD ["uvicorn", "inference_app:app", "--host", "0.0.0.0", "--port", "8080"]
+
+# ============================================================================
+# Development stage (optional)
+# ============================================================================
+FROM production as development
+
+USER root
+
+# Install development dependencies
+RUN pip install --no-cache-dir \
+  pytest \
+  pytest-asyncio \
+  httpx
+
+USER inference
+
+# Override command for development
+CMD ["uvicorn", "inference_app:app", "--host", "0.0.0.0", "--port", "8080", "--reload"]
