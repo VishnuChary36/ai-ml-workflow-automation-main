@@ -425,56 +425,69 @@ The platform now includes a fully compliant MLOps pipeline with production-grade
 
 ### Prerequisites
 
-- Docker and Docker Compose
-- Node.js 18+ (for local frontend development)
-- Python 3.10+ (for local backend development)
+- Docker and Docker Compose (recommended)
+- Node.js 18+ (for local frontend development without Docker)
+- Python 3.10+ (for local backend development without Docker)
 
-### Using Docker Compose (Recommended)
+### One-Command Setup (Recommended)
 
-1. Clone the repository:
+Clone the repository and run the included setup script — it checks prerequisites, copies the environment file, builds all Docker images, starts every service, and verifies the application is healthy:
 
 ```bash
-git clone https://github.com/VishnuChary36/ai-ml-workflow-automation.git
-cd ai-ml-workflow-automation
+git clone https://github.com/VishnuChary36/ai-ml-workflow-automation-main.git
+cd ai-ml-workflow-automation-main
+
+# Make the script executable (Linux/macOS)
+chmod +x scripts/setup.sh
+
+# Docker mode — starts the full stack automatically
+./scripts/setup.sh
+
+# --- OR --- local venv mode (no Docker required for the app itself)
+./scripts/setup.sh --local
 ```
 
-2. Copy environment file:
+Once finished:
+
+| Service    | URL                          |
+| ---------- | ---------------------------- |
+| Frontend   | http://localhost:5173        |
+| Backend    | http://localhost:8000        |
+| API Docs   | http://localhost:8000/docs   |
+
+To stop: `docker compose -f infra/docker-compose.yml down`
+
+---
+
+### Manual Setup — Docker Compose
 
 ```bash
+git clone https://github.com/VishnuChary36/ai-ml-workflow-automation-main.git
+cd ai-ml-workflow-automation-main
+
 cp .env.example .env
+docker compose -f infra/docker-compose.yml up --build
 ```
 
-3. Start all services:
-
-```bash
-docker-compose -f infra/docker-compose.yml up --build
-```
-
-4. Access the application:
-
-- **Frontend**: http://localhost:5173
-- **Backend API**: http://localhost:8000
-- **API Docs**: http://localhost:8000/docs
-
-### Local Development
+### Manual Setup — Local Development
 
 #### Backend
 
 ```bash
 cd backend
 
-# Create virtual environment
-python -m venv venv
-source venv/bin/activate  # On Windows: venv\Scripts\activate
+# Create and activate virtual environment
+python3 -m venv venv
+source venv/bin/activate        # Windows: venv\Scripts\activate
 
 # Install dependencies
 pip install -r requirements.txt
 
-# Start PostgreSQL and Redis (using Docker)
+# Start PostgreSQL and Redis (via Docker)
 docker run -d -p 5432:5432 -e POSTGRES_PASSWORD=postgres -e POSTGRES_DB=mlworkflow postgres:15
 docker run -d -p 6379:6379 redis:7-alpine
 
-# Run backend
+# Run the backend
 uvicorn app:app --reload --host 0.0.0.0 --port 8000
 ```
 
@@ -489,6 +502,14 @@ npm install
 # Start development server
 npm run dev
 ```
+
+### GitHub Actions CI
+
+Every push and pull request triggers the **Application Setup Check** workflow (`.github/workflows/setup-check.yml`) which:
+
+1. Installs all backend Python dependencies and verifies imports.
+2. Installs all frontend Node.js dependencies and builds the production bundle.
+3. Starts the full stack with Docker Compose and health-checks `GET /health`.
 
 ## 📖 User Flow
 
