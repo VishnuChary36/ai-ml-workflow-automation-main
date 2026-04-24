@@ -1,0 +1,48 @@
+{
+  "numeric_columns": [
+    "Transaction ID",
+    "Customer ID",
+    "Item",
+    "Price Per Unit",
+    "Quantity",
+    "Total Spent",
+    "Transaction Date"
+  ],
+  "categorical_columns": [],
+  "encoder_classes": {},
+  "fill_values": {
+    "Transaction ID": 6287.0,
+    "Customer ID": 12.0,
+    "Item": 107.0,
+    "Price Per Unit": 0.0,
+    "Quantity": -3.185390779509014e-16,
+    "Total Spent": -0.1855469793675695,
+    "Transaction Date": 558.0
+  },
+  "target_classes": [
+    "Beverages",
+    "Butchers",
+    "Computers and electric accessories",
+    "Electric household essentials",
+    "Food",
+    "Furniture",
+    "Milk Products",
+    "Patisserie"
+  ],
+  "feature_order": [
+    "Transaction ID",
+    "Customer ID",
+    "Item",
+    "Price Per Unit",
+    "Quantity",
+    "Total Spent",
+    "Transaction Date",
+    "Payment Method_Cash",
+    "Payment Method_Credit Card",
+    "Payment Method_Digital Wallet",
+    "Location_In-store",
+    "Location_Online",
+    "Discount Applied_False",
+    "Discount Applied_True"
+  ]
+}

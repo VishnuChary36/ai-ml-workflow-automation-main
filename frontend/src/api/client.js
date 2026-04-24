@@ -159,4 +159,55 @@ export const getExplainability = async (modelId) => {
   return response.data;
 };
 
+// ── Grafana Dashboard API ──────────────────────────────────────────────────
+
+export const getGrafanaStatus = async () => {
+  const response = await client.get('/api/grafana/status');
+  return response.data;
+};
+
+export const setupGrafanaDatasource = async () => {
+  const response = await client.post('/api/grafana/setup-datasource');
+  return response.data;
+};
+
+export const createDatasetDashboard = async (datasetId) => {
+  const response = await client.post(`/api/grafana/dashboard/dataset/${datasetId}`);
+  return response.data;
+};
+
+export const createModelDashboard = async (modelId) => {
+  const response = await client.post(`/api/grafana/dashboard/model/${modelId}`);
+  return response.data;
+};
+
+export const getGrafanaDashboard = async (uid) => {
+  const response = await client.get(`/api/grafana/dashboard/${uid}`);
+  return response.data;
+};
+
+export const listGrafanaDashboards = async () => {
+  const response = await client.get('/api/grafana/dashboards');
+  return response.data;
+};
+
+export const deleteGrafanaDashboard = async (uid) => {
+  const response = await client.delete(`/api/grafana/dashboard/${uid}`);
+  return response.data;
+};
+
+export const getDatasetNarrative = async (datasetId, useLlm = null) => {
+  const params = {};
+  if (useLlm !== null) params.use_llm = useLlm;
+  const response = await client.get(`/api/grafana/narrative/dataset/${datasetId}`, { params });
+  return response.data;
+};
+
+export const getModelNarrative = async (modelId, useLlm = null) => {
+  const params = {};
+  if (useLlm !== null) params.use_llm = useLlm;
+  const response = await client.get(`/api/grafana/narrative/model/${modelId}`, { params });
+  return response.data;
+};
+
 export default client;

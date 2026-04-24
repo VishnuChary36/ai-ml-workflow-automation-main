@@ -54,6 +54,8 @@ def test_detect_target_column():
     })
     
     profile = DataProfiler.profile_dataset(df)
-    target = DataProfiler.detect_target_column(df, profile)
+    result = DataProfiler.detect_target_column(df, profile)
     
-    assert target == 'target'
+    assert result['column'] == 'target'
+    assert 'reason' in result
+    assert 'confidence' in result

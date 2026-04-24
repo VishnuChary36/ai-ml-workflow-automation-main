@@ -9,8 +9,16 @@ import joblib
 import os
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score, mean_squared_error, r2_score
-from sklearn.linear_model import LogisticRegression, LinearRegression
-from sklearn.ensemble import RandomForestClassifier, RandomForestRegressor
+from sklearn.linear_model import LogisticRegression, LinearRegression, Ridge, Lasso, ElasticNet
+from sklearn.ensemble import (
+    RandomForestClassifier, RandomForestRegressor,
+    GradientBoostingClassifier, GradientBoostingRegressor,
+    AdaBoostClassifier, AdaBoostRegressor,
+    ExtraTreesClassifier, ExtraTreesRegressor
+)
+from sklearn.tree import DecisionTreeClassifier, DecisionTreeRegressor
+from sklearn.svm import SVC, SVR
+from sklearn.neighbors import KNeighborsClassifier, KNeighborsRegressor
 from xgboost import XGBClassifier, XGBRegressor
 from sklearn.preprocessing import LabelEncoder
 
@@ -61,12 +69,29 @@ class TrainingService:
         self.task_id = task_id
         self.emit_log = emit_log_func
         self.models = {
+            # Classification
             'LogisticRegression': LogisticRegression,
-            'LinearRegression': LinearRegression,
             'RandomForestClassifier': RandomForestClassifier,
-            'RandomForestRegressor': RandomForestRegressor,
             'XGBoostClassifier': XGBClassifier,
-            'XGBoostRegressor': XGBRegressor
+            'GradientBoostingClassifier': GradientBoostingClassifier,
+            'AdaBoostClassifier': AdaBoostClassifier,
+            'ExtraTreesClassifier': ExtraTreesClassifier,
+            'DecisionTreeClassifier': DecisionTreeClassifier,
+            'SVCClassifier': SVC,
+            'KNeighborsClassifier': KNeighborsClassifier,
+            # Regression
+            'LinearRegression': LinearRegression,
+            'Ridge': Ridge,
+            'Lasso': Lasso,
+            'ElasticNet': ElasticNet,
+            'RandomForestRegressor': RandomForestRegressor,
+            'XGBoostRegressor': XGBRegressor,
+            'GradientBoostingRegressor': GradientBoostingRegressor,
+            'AdaBoostRegressor': AdaBoostRegressor,
+            'ExtraTreesRegressor': ExtraTreesRegressor,
+            'DecisionTreeRegressor': DecisionTreeRegressor,
+            'SVRRegressor': SVR,
+            'KNeighborsRegressor': KNeighborsRegressor,
         }
     
     async def train_model(self, df: pd.DataFrame, model_config: Dict[str, Any], target_column: str):
@@ -80,7 +105,7 @@ class TrainingService:
         await self.emit_log(
             self.task_id,
             "INFO",
-            f"🚀 Starting model training: {model_name}",
+            f"[START] Starting model training: {model_name}",
             source="training.init",
             meta={"model": model_name, "target_column": target_column, "step": "initialization"}
         )
@@ -92,7 +117,7 @@ class TrainingService:
             await self.emit_log(
                 self.task_id,
                 "INFO",
-                "📊 Preparing data for training...",
+                "[DATA] Preparing data for training...",
                 source="training.data_prep",
                 meta={"step": "data_preparation"}
             )
@@ -106,7 +131,7 @@ class TrainingService:
             await self.emit_log(
                 self.task_id,
                 "INFO",
-                "🔄 Encoding categorical features...",
+                "[ENCODE] Encoding categorical features...",
                 source="training.encoding",
                 meta={"step": "feature_encoding"}
             )
@@ -131,13 +156,7 @@ class TrainingService:
             
             if target_is_categorical:
                 le_target = LabelEncoder()
-                y = le_target.fit_transform(y)
-                unique_encoded = np.unique(y)
-                expected_sequence = np.arange(len(unique_encoded))
-                
-                if not np.array_equal(unique_encoded, expected_sequence):
-                    value_mapping = {val: idx for idx, val in enumerate(np.unique(y))}
-                    y = np.array([value_mapping[val] for val in y])
+                y = pd.Series(le_target.fit_transform(y.astype(str)))
                 
                 problem_type = "classification"
                 n_classes = len(np.unique(y))
@@ -157,14 +176,53 @@ class TrainingService:
             await self.emit_log(
                 self.task_id,
                 "INFO",
-                "✂️ Splitting data into train/test sets (80/20)...",
+                "[SPLIT] Splitting data into train/test sets (80/20)...",
                 source="training.split",
                 meta={"step": "data_split"}
             )
             
-            X_train, X_test, y_train, y_test = train_test_split(
-                X, y, test_size=0.2, random_state=42
-            )
+            # Try stratified split for classification to ensure all classes 
+            # appear in both sets; fall back to regular split if classes have 
+            # too few samples for stratification
+            if problem_type == "classification":
+                try:
+                    X_train, X_test, y_train, y_test = train_test_split(
+                        X, y, test_size=0.2, random_state=42, stratify=y
+                    )
+                except ValueError:
+                    # Stratification fails when some classes have < 2 samples
+                    X_train, X_test, y_train, y_test = train_test_split(
+                        X, y, test_size=0.2, random_state=42
+                    )
+            else:
+                X_train, X_test, y_train, y_test = train_test_split(
+                    X, y, test_size=0.2, random_state=42
+                )
+            
+            # For classification, remap labels to contiguous 0..N-1 based on 
+            # the training set classes. This prevents XGBoost (and similar) 
+            # from failing when labels are non-contiguous after splitting.
+            if problem_type == "classification":
+                train_classes = sorted(np.unique(y_train))
+                class_to_idx = {cls: idx for idx, cls in enumerate(train_classes)}
+                
+                y_train = np.array([class_to_idx[val] for val in y_train])
+                
+                # Filter out test samples whose class was never seen in training
+                test_mask = np.array([val in class_to_idx for val in y_test])
+                if not np.all(test_mask):
+                    n_dropped = int(np.sum(~test_mask))
+                    X_test = X_test[test_mask].reset_index(drop=True) if hasattr(X_test, 'reset_index') else X_test[test_mask]
+                    y_test = y_test[test_mask] if hasattr(y_test, 'values') else y_test[test_mask]
+                    await self.emit_log(
+                        self.task_id,
+                        "WARN",
+                        f"   [WARN] Dropped {n_dropped} test samples with classes unseen in training",
+                        source="training.split"
+                    )
+                
+                y_test = np.array([class_to_idx[val] for val in y_test])
+                n_classes = len(train_classes)
             
             await self.emit_log(
                 self.task_id,
@@ -180,7 +238,7 @@ class TrainingService:
             await self.emit_log(
                 self.task_id,
                 "INFO",
-                f"⚙️ Initializing {model_name} with parameters...",
+                f"[INIT] Initializing {model_name} with parameters...",
                 source="training.model_init",
                 meta={"step": "model_initialization", "params": model_params}
             )
@@ -200,6 +258,42 @@ class TrainingService:
                 clean_params['use_label_encoder'] = False
                 if 'n_jobs' not in clean_params:
                     clean_params['n_jobs'] = -1
+                # Set num_class for multiclass classification
+                if problem_type == "classification" and n_classes > 2:
+                    clean_params['num_class'] = n_classes
+                    if 'objective' not in clean_params:
+                        clean_params['objective'] = 'multi:softmax'
+            
+            # Handle SVC specific params
+            if model_name == 'SVCClassifier':
+                if 'n_jobs' in clean_params:
+                    del clean_params['n_jobs']
+                if 'n_estimators' in clean_params:
+                    del clean_params['n_estimators']
+            
+            # Handle SVR specific params
+            if model_name == 'SVRRegressor':
+                if 'n_jobs' in clean_params:
+                    del clean_params['n_jobs']
+                if 'n_estimators' in clean_params:
+                    del clean_params['n_estimators']
+
+            # Handle KNN specific params
+            if 'KNeighbors' in model_name:
+                if 'n_estimators' in clean_params:
+                    del clean_params['n_estimators']
+
+            # Handle DecisionTree params
+            if 'DecisionTree' in model_name:
+                if 'n_estimators' in clean_params:
+                    del clean_params['n_estimators']
+                if 'learning_rate' in clean_params:
+                    del clean_params['learning_rate']
+
+            # Handle linear model params
+            if model_name in ['Ridge', 'Lasso', 'ElasticNet']:
+                allowed = {'alpha', 'max_iter', 'tol', 'l1_ratio'} if model_name == 'ElasticNet' else {'alpha', 'max_iter', 'tol'}
+                clean_params = {k: v for k, v in clean_params.items() if k in allowed}
             
             model = ModelClass(**clean_params)
             
@@ -211,7 +305,7 @@ class TrainingService:
             await self.emit_log(
                 self.task_id,
                 "INFO",
-                f"🏋️ Training model ({n_estimators} iterations)...",
+                f"[TRAIN] Training model ({n_estimators} iterations)...",
                 source="training.train_start",
                 meta={"step": "training", "total_iterations": n_estimators}
             )
@@ -255,7 +349,7 @@ class TrainingService:
             await self.emit_log(
                 self.task_id,
                 "INFO",
-                f"✅ Model training completed in {training_time:.2f}s",
+                f"[DONE] Model training completed in {training_time:.2f}s",
                 source="training.train_complete"
             )
             
@@ -265,7 +359,7 @@ class TrainingService:
             await self.emit_log(
                 self.task_id,
                 "INFO",
-                "📈 Evaluating model performance...",
+                "[EVAL] Evaluating model performance...",
                 source="training.eval_start",
                 meta={"step": "evaluation"}
             )
@@ -289,25 +383,25 @@ class TrainingService:
                 await self.emit_log(
                     self.task_id,
                     "INFO",
-                    f"   📊 Accuracy:  {accuracy:.4f} ({accuracy*100:.1f}%)",
+                    f"   [METRIC] Accuracy:  {accuracy:.4f} ({accuracy*100:.1f}%)",
                     source="training.metrics"
                 )
                 await self.emit_log(
                     self.task_id,
                     "INFO",
-                    f"   📊 Precision: {precision:.4f}",
+                    f"   [METRIC] Precision: {precision:.4f}",
                     source="training.metrics"
                 )
                 await self.emit_log(
                     self.task_id,
                     "INFO",
-                    f"   📊 Recall:    {recall:.4f}",
+                    f"   [METRIC] Recall:    {recall:.4f}",
                     source="training.metrics"
                 )
                 await self.emit_log(
                     self.task_id,
                     "INFO",
-                    f"   📊 F1 Score:  {f1:.4f}",
+                    f"   [METRIC] F1 Score:  {f1:.4f}",
                     source="training.metrics"
                 )
             else:
@@ -325,13 +419,13 @@ class TrainingService:
                 await self.emit_log(
                     self.task_id,
                     "INFO",
-                    f"   📊 R² Score: {r2:.4f}",
+                    f"   [METRIC] R2 Score: {r2:.4f}",
                     source="training.metrics"
                 )
                 await self.emit_log(
                     self.task_id,
                     "INFO",
-                    f"   📊 RMSE:     {rmse:.4f}",
+                    f"   [METRIC] RMSE:     {rmse:.4f}",
                     source="training.metrics"
                 )
             
@@ -341,7 +435,7 @@ class TrainingService:
             await self.emit_log(
                 self.task_id,
                 "INFO",
-                "💾 Saving trained model...",
+                "[SAVE] Saving trained model...",
                 source="training.save_start",
                 meta={"step": "saving"}
             )
@@ -364,7 +458,7 @@ class TrainingService:
             await self.emit_log(
                 self.task_id,
                 "INFO",
-                f"🎉 Training complete! Total time: {total_time:.2f}s",
+                f"[COMPLETE] Training complete! Total time: {total_time:.2f}s",
                 source="training.complete",
                 meta={
                     "training_time": total_time, 
@@ -379,14 +473,17 @@ class TrainingService:
                 "metrics": metrics,
                 "training_time": total_time,
                 "model_type": problem_type,
-                "model_name": model_name  # Add exact model name
+                "model_name": model_name,  # Add exact model name
+                "y_test": y_test.tolist() if hasattr(y_test, 'tolist') else list(y_test),
+                "y_pred": y_pred.tolist() if hasattr(y_pred, 'tolist') else list(y_pred),
+                "X_test_columns": list(X_test.columns) if hasattr(X_test, 'columns') else [],
             }
             
         except Exception as e:
             await self.emit_log(
                 self.task_id,
                 "ERROR",
-                f"❌ Training failed: {str(e)}",
+                f"[ERROR] Training failed: {str(e)}",
                 source="training.error"
             )
             raise e

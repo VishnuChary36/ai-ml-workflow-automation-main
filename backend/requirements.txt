@@ -3,6 +3,7 @@ fastapi==0.109.0
 uvicorn[standard]==0.27.0
 python-multipart==0.0.6
 websockets>=10.4,<12.0
+flask>=2.0.0
 
 # Task Queue
 celery==5.3.4
@@ -21,8 +22,8 @@ xgboost==2.0.3
 lightgbm==4.2.0
 joblib==1.3.2
 
-# Deep Learning (Optional)
-tensorflow==2.15.0
+# Deep Learning (Optional - uncomment if needed, adds ~2GB to image)
+# tensorflow==2.15.0
 # torch==2.1.2
 
 # Explainability
@@ -49,9 +50,9 @@ python-dateutil==2.8.2
 # Logging & Monitoring
 structlog==24.1.0
 
-# Cloud SDKs (Optional)
-boto3==1.34.28
-google-cloud-storage==2.14.0
+# Cloud SDKs (Optional - uncomment if needed)
+# boto3==1.34.28
+# google-cloud-storage==2.14.0
 
 # Docker (version constraint to satisfy both mlflow and prefect)
 docker>=4.0.0,<7.0
@@ -61,12 +62,15 @@ pytest==7.4.4
 pytest-asyncio==0.23.3
 httpx==0.26.0
 
-# MLOps
-mlflow==2.10.0
-prefect>=3.0.0
+# MLOps (Optional - uncomment if needed, these cause slow dependency resolution)
+# mlflow==2.10.0
+# prefect==3.0.0
 
 # Metrics
-prometheus-client==0.19.0
+prometheus-client>=0.19.0
 
 # HTTP Client (for alerting)
 aiohttp==3.9.1
+
+# Power BI Embedded (Service Principal auth)
+msal>=1.24.0

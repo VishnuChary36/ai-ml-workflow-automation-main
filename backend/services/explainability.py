@@ -10,7 +10,7 @@ import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 import seaborn as sns
-from typing import Dict, Any, List, Optional, Tuple
+from typing import Dict, Any, List, Optional, Tuple, Union
 from datetime import datetime
 from sklearn.inspection import permutation_importance, PartialDependenceDisplay
 from sklearn.calibration import calibration_curve
@@ -126,7 +126,7 @@ class ExplainabilityService:
             y_pred = model.predict(X)
             
             # 1. Permutation Feature Importance
-            self._log("INFO", "   📊 Computing Permutation Feature Importance...")
+            self._log("INFO", "   [CHART] Computing Permutation Feature Importance...")
             try:
                 perm_importance = self._generate_permutation_importance(model, X_sample, y_sample, feature_names)
                 if perm_importance:
@@ -146,7 +146,7 @@ class ExplainabilityService:
                 self._log("WARN", "   SHAP not installed, skipping SHAP analysis")
             
             # 3. Partial Dependence Plots (for top features)
-            self._log("INFO", "   📈 Generating Partial Dependence Plots...")
+            self._log("INFO", "   [EVAL] Generating Partial Dependence Plots...")
             try:
                 pdp_plots = self._generate_pdp_plots(model, X_sample, feature_names, model_type)
                 if pdp_plots:
@@ -177,7 +177,7 @@ class ExplainabilityService:
             
             # 6. Confusion Matrix Analysis (for classification)
             if model_type == "classification":
-                self._log("INFO", "   📋 Generating Confusion Matrix Analysis...")
+                self._log("INFO", "   [LIST] Generating Confusion Matrix Analysis...")
                 try:
                     cm_analysis = self._generate_confusion_analysis(y, y_pred, encoders)
                     if cm_analysis:
@@ -196,7 +196,7 @@ class ExplainabilityService:
                     self._log("WARN", f"   Calibration plot failed: {str(e)}")
             
             # 8. Feature Distribution Analysis
-            self._log("INFO", "   📊 Analyzing Feature Distributions...")
+            self._log("INFO", "   [CHART] Analyzing Feature Distributions...")
             try:
                 distributions = self._generate_feature_distributions(X, feature_names)
                 if distributions:
@@ -213,7 +213,7 @@ class ExplainabilityService:
             except Exception as e:
                 self._log("WARN", f"   Correlation analysis failed: {str(e)}")
             
-            self._log("INFO", f"✅ Explainability analysis complete! Generated {len(explanations)} explanations")
+            self._log("INFO", f"[OK] Explainability analysis complete! Generated {len(explanations)} explanations")
             
             return {
                 "explanations": explanations,
@@ -222,7 +222,131 @@ class ExplainabilityService:
             }
             
         except Exception as e:
-            self._log("ERROR", f"❌ Explainability analysis failed: {str(e)}")
+            self._log("ERROR", f"[ERROR] Explainability analysis failed: {str(e)}")
+            raise e
+
+    def generate_explainability_from_model(self, df: pd.DataFrame, model: Any, 
+                                           target_column: str, model_type: str = "classification",
+                                           model_name: str = None) -> Dict[str, Any]:
+        """
+        Generate comprehensive explainability report using a model object directly.
+        This is the production-ready version that doesn't depend on file paths.
+        
+        Args:
+            df: DataFrame with the data
+            model: Trained model object
+            target_column: Name of the target column
+            model_type: 'classification' or 'regression'
+            model_name: Name of the model algorithm
+            
+        Returns:
+            Dictionary with explanations and metadata
+        """
+        explanations = {}
+        metadata = {
+            "model_name": model_name,
+            "model_type": model_type,
+            "target_column": target_column,
+            "n_samples": len(df),
+            "n_features": len(df.columns) - 1,
+            "generated_at": datetime.utcnow().isoformat()
+        }
+        
+        self._log("INFO", f"🔍 Starting explainability analysis for {model_name or model_type}")
+        
+        try:
+            # Prepare data
+            X, y, encoders = self._prepare_data(df, target_column)
+            feature_names = X.columns.tolist()
+            
+            # Sample data if too large
+            if len(X) > self.max_samples_for_shap:
+                sample_idx = np.random.choice(len(X), self.max_samples_for_shap, replace=False)
+                X_sample = X.iloc[sample_idx]
+                y_sample = y.iloc[sample_idx] if isinstance(y, pd.Series) else y[sample_idx]
+            else:
+                X_sample = X
+                y_sample = y
+            
+            # Make predictions
+            y_pred = model.predict(X)
+            
+            # 1. Permutation Feature Importance
+            self._log("INFO", "   [CHART] Computing Permutation Feature Importance...")
+            try:
+                perm_importance = self._generate_permutation_importance(model, X_sample, y_sample, feature_names)
+                if perm_importance:
+                    explanations['permutation_importance'] = perm_importance
+            except Exception as e:
+                self._log("WARN", f"   Permutation importance failed: {str(e)}")
+            
+            # 2. SHAP Analysis
+            if SHAP_AVAILABLE:
+                self._log("INFO", "   🎯 Computing SHAP values...")
+                try:
+                    shap_results = self._generate_shap_explanations(model, X_sample, feature_names, model_type)
+                    explanations.update(shap_results)
+                except Exception as e:
+                    self._log("WARN", f"   SHAP analysis failed: {str(e)}")
+            
+            # 3. Partial Dependence Plots (for top features)
+            self._log("INFO", "   [EVAL] Generating Partial Dependence Plots...")
+            try:
+                pdp_plots = self._generate_pdp_plots(model, X_sample, feature_names, model_type)
+                if pdp_plots:
+                    explanations['partial_dependence'] = pdp_plots
+            except Exception as e:
+                self._log("WARN", f"   PDP generation failed: {str(e)}")
+            
+            # 4. LIME Explanations (for sample instances)
+            if LIME_AVAILABLE:
+                self._log("INFO", "   🍋 Generating LIME explanations...")
+                try:
+                    lime_results = self._generate_lime_explanations(model, X, X_sample, feature_names, model_type)
+                    if lime_results:
+                        explanations['lime_explanations'] = lime_results
+                except Exception as e:
+                    self._log("WARN", f"   LIME analysis failed: {str(e)}")
+            
+            # 5. Surrogate Model (Decision Tree approximation)
+            self._log("INFO", "   🌳 Fitting Surrogate Decision Tree...")
+            try:
+                surrogate = self._generate_surrogate_model(model, X_sample, model_type)
+                if surrogate:
+                    explanations['surrogate_tree'] = surrogate
+            except Exception as e:
+                self._log("WARN", f"   Surrogate model failed: {str(e)}")
+            
+            # 6. Confusion Matrix Analysis (for classification)
+            if model_type == "classification":
+                self._log("INFO", "   [LIST] Generating Confusion Matrix Analysis...")
+                try:
+                    cm_analysis = self._generate_confusion_analysis(y, y_pred, encoders)
+                    if cm_analysis:
+                        explanations['confusion_analysis'] = cm_analysis
+                except Exception as e:
+                    self._log("WARN", f"   Confusion analysis failed: {str(e)}")
+            
+            # 7. Calibration Plot (for classification with predict_proba)
+            if model_type == "classification" and hasattr(model, 'predict_proba'):
+                self._log("INFO", "   📉 Generating Calibration Plot...")
+                try:
+                    calibration = self._generate_calibration_plot(model, X, y)
+                    if calibration:
+                        explanations['calibration_plot'] = calibration
+                except Exception as e:
+                    self._log("WARN", f"   Calibration plot failed: {str(e)}")
+            
+            self._log("INFO", f"[OK] Explainability analysis complete! Generated {len(explanations)} explanations")
+            
+            return {
+                "explanations": explanations,
+                "metadata": metadata,
+                "available_methods": list(explanations.keys())
+            }
+            
+        except Exception as e:
+            self._log("ERROR", f"[ERROR] Explainability analysis failed: {str(e)}")
             raise e
     
     def _generate_permutation_importance(self, model, X, y, feature_names) -> Dict:

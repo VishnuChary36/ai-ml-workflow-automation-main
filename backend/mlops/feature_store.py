@@ -161,7 +161,7 @@ class FeatureStore:
         
         self._save_index()
         
-        print(f"✓ Registered feature set: {feature_set_id} with {len(feature_columns)} features")
+        print(f"[OK] Registered feature set: {feature_set_id} with {len(feature_columns)} features")
         return fs_info
     
     def _get_next_version(self, name: str) -> int:

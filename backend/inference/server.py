@@ -139,7 +139,7 @@ class InferenceServer:
         )
         self.predictor.load()
         self.ready = True
-        print(f"✓ Model loaded: {model_path}")
+        print(f"[OK] Model loaded: {model_path}")
     
     def predict(
         self,

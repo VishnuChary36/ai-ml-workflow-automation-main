@@ -81,64 +81,124 @@ class SuggestionEngine:
     def calculate_model_score(model_name: str, analysis: Dict[str, Any], problem_type: str) -> float:
         """Calculate a score for how suitable a model is for the given dataset."""
         score = 50.0  # Base score
+        n_classes = analysis.get("n_classes", 2)
+        n_samples = analysis.get("n_samples", 100)
+        n_features = analysis.get("n_features", 5)
         
         if problem_type == "classification":
+            # Penalize all classifiers when there are too many classes
+            # relative to dataset size (sparse classes cause label issues)
+            if n_classes > 50 or (n_classes > 20 and n_samples / max(n_classes, 1) < 20):
+                score -= 20  # Heavy penalty: too many classes for reliable classification
+            
             if model_name == "XGBoostClassifier":
-                # XGBoost excels with medium to large datasets
                 if analysis["is_large_dataset"]:
                     score += 25
                 elif analysis["is_medium_dataset"]:
                     score += 20
                 else:
                     score += 10
-                
-                # Handles imbalanced data well
                 if analysis["is_imbalanced"]:
                     score += 15
-                
-                # Handles missing values
                 if analysis["has_missing_values"]:
                     score += 10
-                
-                # Good with mixed features
                 if analysis["categorical_ratio"] > 0.3:
                     score += 5
                     
+            elif model_name == "GradientBoostingClassifier":
+                if analysis["is_large_dataset"]:
+                    score += 20
+                elif analysis["is_medium_dataset"]:
+                    score += 22
+                else:
+                    score += 12
+                if analysis["is_imbalanced"]:
+                    score += 10
+                if n_features < 30:
+                    score += 5
+                    
             elif model_name == "RandomForestClassifier":
-                # Random Forest is robust for most datasets
                 if analysis["is_medium_dataset"]:
                     score += 20
                 elif analysis["is_small_dataset"]:
                     score += 15
                 else:
                     score += 10
-                
-                # Good with high dimensional data
                 if analysis["is_high_dimensional"]:
                     score += 10
-                
-                # Handles imbalanced reasonably
                 if analysis["is_imbalanced"]:
                     score += 8
+                score += 5  # interpretability
                 
-                # Good interpretability
-                score += 5
-                
+            elif model_name == "ExtraTreesClassifier":
+                if analysis["is_medium_dataset"]:
+                    score += 18
+                elif analysis["is_small_dataset"]:
+                    score += 14
+                else:
+                    score += 10
+                if analysis["is_high_dimensional"]:
+                    score += 12
+                if n_features > 20:
+                    score += 5
+                    
+            elif model_name == "AdaBoostClassifier":
+                if analysis["is_small_dataset"]:
+                    score += 18
+                elif analysis["is_medium_dataset"]:
+                    score += 12
+                else:
+                    score += 5
+                if not analysis["is_imbalanced"]:
+                    score += 5
+                if n_features < 20:
+                    score += 5
+                    
+            elif model_name == "DecisionTreeClassifier":
+                if analysis["is_small_dataset"]:
+                    score += 15
+                elif analysis["is_medium_dataset"]:
+                    score += 5
+                else:
+                    score -= 10
+                score += 8  # high interpretability
+                if n_features < 15:
+                    score += 5
+                    
+            elif model_name == "SVCClassifier":
+                if analysis["is_small_dataset"]:
+                    score += 20
+                elif analysis["is_medium_dataset"] and n_samples < 10000:
+                    score += 10
+                else:
+                    score -= 15  # SVM doesn't scale well
+                if not analysis.get("is_multiclass"):
+                    score += 8
+                if n_features < 30:
+                    score += 5
+                    
+            elif model_name == "KNeighborsClassifier":
+                if analysis["is_small_dataset"]:
+                    score += 18
+                elif analysis["is_medium_dataset"] and n_samples < 5000:
+                    score += 8
+                else:
+                    score -= 10
+                if n_features < 20:
+                    score += 8
+                if analysis["has_missing_values"]:
+                    score -= 10
+                    
             elif model_name == "LogisticRegression":
-                # Best for small, simple datasets
                 if analysis["is_small_dataset"] and not analysis["is_high_dimensional"]:
                     score += 20
-                elif analysis["is_medium_dataset"] and analysis["n_features"] < 30:
+                elif analysis["is_medium_dataset"] and n_features < 30:
                     score += 10
                 else:
                     score -= 10
-                
-                # Not great for imbalanced
                 if analysis["is_imbalanced"]:
                     score -= 5
-                
-                # Fast training
-                score += 10
+                score += 10  # fast training
                 
         else:  # Regression
             if model_name == "XGBoostRegressor":
@@ -148,12 +208,20 @@ class SuggestionEngine:
                     score += 20
                 else:
                     score += 10
-                
                 if analysis["has_missing_values"]:
                     score += 10
-                
                 if analysis["high_variance_features"] > 0:
                     score += 5
+                    
+            elif model_name == "GradientBoostingRegressor":
+                if analysis["is_large_dataset"]:
+                    score += 20
+                elif analysis["is_medium_dataset"]:
+                    score += 22
+                else:
+                    score += 12
+                if analysis["high_variance_features"] > 0:
+                    score += 8
                     
             elif model_name == "RandomForestRegressor":
                 if analysis["is_medium_dataset"]:
@@ -162,21 +230,96 @@ class SuggestionEngine:
                     score += 15
                 else:
                     score += 10
-                
                 if analysis["is_high_dimensional"]:
                     score += 10
+                score += 5
                 
-                score += 5  # Good interpretability
+            elif model_name == "ExtraTreesRegressor":
+                if analysis["is_medium_dataset"]:
+                    score += 18
+                elif analysis["is_small_dataset"]:
+                    score += 14
+                else:
+                    score += 10
+                if analysis["is_high_dimensional"]:
+                    score += 12
+                    
+            elif model_name == "AdaBoostRegressor":
+                if analysis["is_small_dataset"]:
+                    score += 15
+                elif analysis["is_medium_dataset"]:
+                    score += 10
+                else:
+                    score += 3
+                if n_features < 20:
+                    score += 5
+                    
+            elif model_name == "DecisionTreeRegressor":
+                if analysis["is_small_dataset"]:
+                    score += 12
+                else:
+                    score -= 5
+                score += 8  # interpretability
                 
+            elif model_name == "SVRRegressor":
+                if analysis["is_small_dataset"]:
+                    score += 18
+                elif analysis["is_medium_dataset"] and n_samples < 10000:
+                    score += 8
+                else:
+                    score -= 15
+                if n_features < 30:
+                    score += 5
+                    
+            elif model_name == "KNeighborsRegressor":
+                if analysis["is_small_dataset"]:
+                    score += 15
+                elif analysis["is_medium_dataset"] and n_samples < 5000:
+                    score += 5
+                else:
+                    score -= 10
+                if n_features < 20:
+                    score += 8
+                if analysis["has_missing_values"]:
+                    score -= 10
+                    
+            elif model_name == "Ridge":
+                if analysis["is_small_dataset"]:
+                    score += 20
+                elif analysis["is_medium_dataset"]:
+                    score += 12
+                else:
+                    score += 5
+                if analysis["is_high_dimensional"]:
+                    score += 10  # Ridge handles multicollinearity
+                score += 10  # fast
+                
+            elif model_name == "Lasso":
+                if analysis["is_high_dimensional"]:
+                    score += 15  # Lasso does feature selection
+                if analysis["is_small_dataset"]:
+                    score += 15
+                elif analysis["is_medium_dataset"]:
+                    score += 10
+                score += 8  # fast
+                
+            elif model_name == "ElasticNet":
+                if analysis["is_high_dimensional"]:
+                    score += 12
+                if analysis["is_small_dataset"]:
+                    score += 15
+                elif analysis["is_medium_dataset"]:
+                    score += 10
+                score += 8
+                    
             elif model_name == "LinearRegression":
-                if analysis["is_small_dataset"] and analysis["n_features"] < 20:
+                if analysis["is_small_dataset"] and n_features < 20:
                     score += 25
-                elif analysis["is_medium_dataset"] and analysis["n_features"] < 30:
+                elif analysis["is_medium_dataset"] and n_features < 30:
                     score += 10
                 else:
                     score -= 15
-                
-                score += 10  # Fast training
+                score += 10  # fast training
         
         return min(max(score, 0), 100)  # Clamp between 0-100
     
@@ -187,10 +330,25 @@ class SuggestionEngine:
         base_times = {
             "XGBoostClassifier": 0.00005,
             "XGBoostRegressor": 0.00005,
+            "GradientBoostingClassifier": 0.00006,
+            "GradientBoostingRegressor": 0.00006,
             "RandomForestClassifier": 0.00008,
             "RandomForestRegressor": 0.00008,
+            "ExtraTreesClassifier": 0.00007,
+            "ExtraTreesRegressor": 0.00007,
+            "AdaBoostClassifier": 0.00004,
+            "AdaBoostRegressor": 0.00004,
+            "DecisionTreeClassifier": 0.00002,
+            "DecisionTreeRegressor": 0.00002,
+            "SVCClassifier": 0.0002,
+            "SVRRegressor": 0.0002,
+            "KNeighborsClassifier": 0.00001,
+            "KNeighborsRegressor": 0.00001,
             "LogisticRegression": 0.00001,
             "LinearRegression": 0.000005,
+            "Ridge": 0.000005,
+            "Lasso": 0.00001,
+            "ElasticNet": 0.00001,
         }
         
         base = base_times.get(model_name, 0.0001)
@@ -391,6 +549,16 @@ class SuggestionEngine:
                     "base_rationale": "XGBoost excels with tabular data, handles missing values natively, and provides feature importance."
                 },
                 {
+                    "model": "GradientBoostingClassifier",
+                    "params": {
+                        "n_estimators": min(200, max(50, n_rows // 100)),
+                        "max_depth": 5 if n_rows < 10000 else 7,
+                        "learning_rate": 0.1,
+                        "min_samples_split": 5
+                    },
+                    "base_rationale": "Gradient Boosting builds trees sequentially, correcting errors. Strong accuracy with good generalization."
+                },
+                {
                     "model": "RandomForestClassifier",
                     "params": {
                         "n_estimators": min(200, max(50, n_rows // 100)),
@@ -399,6 +567,50 @@ class SuggestionEngine:
                         "n_jobs": -1
                     },
                     "base_rationale": "Random Forest is robust, interpretable, handles non-linear relationships, and rarely overfits."
+                },
+                {
+                    "model": "ExtraTreesClassifier",
+                    "params": {
+                        "n_estimators": min(200, max(50, n_rows // 100)),
+                        "max_depth": 10 if n_rows < 10000 else 15,
+                        "min_samples_split": 5,
+                        "n_jobs": -1
+                    },
+                    "base_rationale": "Extra Trees uses random splits for faster training and can outperform Random Forest on noisy data."
+                },
+                {
+                    "model": "AdaBoostClassifier",
+                    "params": {
+                        "n_estimators": min(150, max(50, n_rows // 100)),
+                        "learning_rate": 0.1
+                    },
+                    "base_rationale": "AdaBoost focuses on hard-to-classify samples, great for balanced datasets with clear patterns."
+                },
+                {
+                    "model": "DecisionTreeClassifier",
+                    "params": {
+                        "max_depth": 8 if n_rows < 10000 else 12,
+                        "min_samples_split": 5
+                    },
+                    "base_rationale": "Decision Tree provides high interpretability — easy to visualize and explain predictions."
+                },
+                {
+                    "model": "SVCClassifier",
+                    "params": {
+                        "C": 1.0,
+                        "kernel": "rbf",
+                        "max_iter": 5000
+                    },
+                    "base_rationale": "SVM finds optimal decision boundaries, excellent for smaller datasets with clear margins."
+                },
+                {
+                    "model": "KNeighborsClassifier",
+                    "params": {
+                        "n_neighbors": min(7, max(3, int(n_rows ** 0.5 / 10))),
+                        "weights": "distance",
+                        "n_jobs": -1
+                    },
+                    "base_rationale": "KNN is simple and effective for small datasets with well-separated clusters."
                 },
                 {
                     "model": "LogisticRegression",
@@ -423,6 +635,15 @@ class SuggestionEngine:
                     "base_rationale": "XGBoost provides excellent regression performance with automatic feature interactions."
                 },
                 {
+                    "model": "GradientBoostingRegressor",
+                    "params": {
+                        "n_estimators": min(200, max(50, n_rows // 100)),
+                        "max_depth": 5 if n_rows < 10000 else 7,
+                        "learning_rate": 0.1
+                    },
+                    "base_rationale": "Gradient Boosting captures complex non-linear relationships with sequential error correction."
+                },
+                {
                     "model": "RandomForestRegressor",
                     "params": {
                         "n_estimators": min(200, max(50, n_rows // 100)),
@@ -430,6 +651,74 @@ class SuggestionEngine:
                         "n_jobs": -1
                     },
                     "base_rationale": "Random Forest handles non-linear relationships well and provides robust predictions."
+                },
+                {
+                    "model": "ExtraTreesRegressor",
+                    "params": {
+                        "n_estimators": min(200, max(50, n_rows // 100)),
+                        "max_depth": 10 if n_rows < 10000 else 15,
+                        "n_jobs": -1
+                    },
+                    "base_rationale": "Extra Trees is faster than Random Forest and handles noisy features better."
+                },
+                {
+                    "model": "AdaBoostRegressor",
+                    "params": {
+                        "n_estimators": min(150, max(50, n_rows // 100)),
+                        "learning_rate": 0.1
+                    },
+                    "base_rationale": "AdaBoost adaptively reweights samples, useful when outliers need special attention."
+                },
+                {
+                    "model": "DecisionTreeRegressor",
+                    "params": {
+                        "max_depth": 8 if n_rows < 10000 else 12,
+                        "min_samples_split": 5
+                    },
+                    "base_rationale": "Decision Tree Regressor is fast and fully interpretable for simple relationships."
+                },
+                {
+                    "model": "SVRRegressor",
+                    "params": {
+                        "C": 1.0,
+                        "kernel": "rbf",
+                        "max_iter": 5000
+                    },
+                    "base_rationale": "SVR excels at finding complex patterns in smaller datasets with kernel trick."
+                },
+                {
+                    "model": "KNeighborsRegressor",
+                    "params": {
+                        "n_neighbors": min(7, max(3, int(n_rows ** 0.5 / 10))),
+                        "weights": "distance",
+                        "n_jobs": -1
+                    },
+                    "base_rationale": "KNN Regressor predicts based on nearest neighbors, good for local pattern recognition."
+                },
+                {
+                    "model": "Ridge",
+                    "params": {
+                        "alpha": 1.0,
+                        "max_iter": 1000
+                    },
+                    "base_rationale": "Ridge regression adds L2 regularization to handle multicollinearity and prevent overfitting."
+                },
+                {
+                    "model": "Lasso",
+                    "params": {
+                        "alpha": 1.0,
+                        "max_iter": 1000
+                    },
+                    "base_rationale": "Lasso adds L1 regularization for automatic feature selection — zeros out irrelevant features."
+                },
+                {
+                    "model": "ElasticNet",
+                    "params": {
+                        "alpha": 1.0,
+                        "l1_ratio": 0.5,
+                        "max_iter": 1000
+                    },
+                    "base_rationale": "ElasticNet combines L1 and L2 regularization, best when many features are correlated."
                 },
                 {
                     "model": "LinearRegression",
@@ -455,8 +744,10 @@ class SuggestionEngine:
                     rationale_parts.append("Optimized for your large dataset.")
                 if analysis["has_missing_values"]:
                     rationale_parts.append("Can handle your missing values.")
-                if analysis.get("is_imbalanced") and "XGB" in model_name:
+                if analysis.get("is_imbalanced") and ("XGB" in model_name or "Gradient" in model_name):
                     rationale_parts.append("Handles class imbalance well.")
+            elif score >= 60:
+                rationale_parts.append("Good fit for your dataset characteristics.")
             
             suggestions.append({
                 "model": model_name,
@@ -470,6 +761,7 @@ class SuggestionEngine:
                 "training_steps": time_estimate["training_steps"],
                 "is_recommended": False,  # Will be set later
                 "recommendation_reason": "",
+                "ai_suggestion": "",
                 "dataset_analysis": {
                     "samples": int(analysis["n_samples"]),
                     "features": int(analysis["n_features"]),
@@ -486,7 +778,7 @@ class SuggestionEngine:
             best = suggestions[0]
             best["is_recommended"] = True
             
-            # Generate recommendation reason
+            # Generate detailed AI recommendation reason
             reasons = []
             if analysis["is_large_dataset"]:
                 reasons.append("large dataset size")
@@ -503,5 +795,20 @@ class SuggestionEngine:
                 reasons.append("high-dimensional data")
                 
             best["recommendation_reason"] = f"Best for your data: {', '.join(reasons)}"
+            
+            # Build AI suggestion explanation
+            ai_parts = [f"AI analyzed your dataset ({analysis['n_samples']} samples, {analysis['n_features']} features"]
+            if problem_type == "classification":
+                ai_parts[0] += f", {analysis.get('n_classes', 2)} classes)"
+            else:
+                ai_parts[0] += ")"
+            ai_parts.append(f"and recommends {best['model']} (score: {best['score']:.0f}/100)")
+            
+            if len(suggestions) > 1:
+                runner_up = suggestions[1]
+                ai_parts.append(f"over {runner_up['model']} (score: {runner_up['score']:.0f}/100)")
+            
+            ai_parts.append(f"because it's optimized for {', '.join(reasons)}.")
+            best["ai_suggestion"] = " ".join(ai_parts)
         
         return suggestions

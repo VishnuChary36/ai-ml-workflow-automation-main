@@ -127,7 +127,7 @@ class ABTestingRouter:
         if is_control:
             self.control_variant_id = variant_id
         
-        print(f"✓ Added variant: {name} (weight={weight})")
+        print(f"[OK] Added variant: {name} (weight={weight})")
         return variant
     
     def remove_variant(self, variant_id: str) -> bool:
@@ -156,14 +156,14 @@ class ABTestingRouter:
         self.status = "running"
         self.started_at = datetime.utcnow()
         self._save_config()
-        print(f"✓ Started A/B test: {self.name}")
+        print(f"[OK] Started A/B test: {self.name}")
     
     def stop(self):
         """Stop the experiment."""
         self.status = "completed"
         self.completed_at = datetime.utcnow()
         self._save_config()
-        print(f"✓ Stopped A/B test: {self.name}")
+        print(f"[OK] Stopped A/B test: {self.name}")
     
     def _select_variant(
         self,

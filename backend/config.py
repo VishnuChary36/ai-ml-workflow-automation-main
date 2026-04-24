@@ -35,7 +35,7 @@ class Settings(BaseSettings):
     app_name: str = "AI-ML Workflow Automation"
     debug: bool = os.getenv("DEBUG", "true").lower() == "true"
     secret_key: str = _get_secret("SECRET_KEY", "development-secret-key-change-in-production")
-    allowed_origins: list[str] = ["http://localhost:5173", "http://localhost:3000"]
+    allowed_origins: list[str] = ["http://localhost:5173", "http://localhost:5174", "http://localhost:3000"]
     
     # Environment
     environment: str = os.getenv("ENVIRONMENT", "development")
@@ -55,7 +55,7 @@ class Settings(BaseSettings):
     model_storage_path: str = os.getenv("MODEL_STORAGE_PATH", "./models")
     
     # AI/LLM - always use secrets manager for API keys
-    openai_api_key: Optional[str] = _get_secret("OPENAI_API_KEY")
+    openai_api_key: Optional[str] = _get_secret("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")
     anthropic_api_key: Optional[str] = _get_secret("ANTHROPIC_API_KEY")
     use_llm_suggestions: bool = os.getenv("USE_LLM_SUGGESTIONS", "false").lower() == "true"
     
@@ -86,9 +86,15 @@ class Settings(BaseSettings):
     rate_limit_requests: int = int(os.getenv("RATE_LIMIT_REQUESTS", "100"))
     rate_limit_window: int = int(os.getenv("RATE_LIMIT_WINDOW", "60"))
     
+    # Grafana Integration
+    grafana_url: str = "http://localhost:3000"
+    grafana_api_key: Optional[str] = None
+    grafana_datasource_uid: Optional[str] = ""
+    
     class Config:
         env_file = ".env"
         case_sensitive = False
+        extra = "ignore"
 
 
 settings = Settings()

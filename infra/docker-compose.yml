@@ -1,8 +1,6 @@
-version: '3.8'
-
 services:
   postgres:
-    image: postgres:15
+    image: postgres:15-alpine
     environment:
       POSTGRES_DB: mlworkflow
       POSTGRES_USER: postgres
@@ -33,6 +31,7 @@ services:
     build:
       context: ..
       dockerfile: infra/Dockerfile.backend
+      target: runtime
     ports:
       - "8000:8000"
     environment:
@@ -76,10 +75,11 @@ services:
     build:
       context: ..
       dockerfile: infra/Dockerfile.frontend
+      target: dev
     ports:
       - "5173:5173"
     volumes:
-      - ../frontend:/app
+      - ../frontend/src:/app/src
       - /app/node_modules
     environment:
       VITE_API_URL: http://localhost:8000

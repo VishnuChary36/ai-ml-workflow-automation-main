@@ -132,11 +132,11 @@ class ModelStore:
             if target_encoder_path.exists():
                 self.target_encoders[model_id] = joblib.load(target_encoder_path)
             
-            print(f"✓ Loaded model: {model_id}")
+            print(f"[OK] Loaded model: {model_id}")
             return True
             
         except Exception as e:
-            print(f"✗ Failed to load model {model_id}: {e}")
+            print(f"[FAIL] Failed to load model {model_id}: {e}")
             return False
     
     def get_model(self, model_id: str) -> Optional[Any]:
@@ -242,8 +242,8 @@ async def lifespan(app: FastAPI):
     model_store.ready = True
     model_store.load_time = datetime.utcnow()
     
-    print(f"✓ Loaded {len(model_store.models)} model(s)")
-    print(f"✓ Inference service ready on {config.HOST}:{config.PORT}")
+    print(f"[OK] Loaded {len(model_store.models)} model(s)")
+    print(f"[OK] Inference service ready on {config.HOST}:{config.PORT}")
     print("=" * 60)
     
     yield

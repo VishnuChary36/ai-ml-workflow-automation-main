@@ -338,35 +338,37 @@ const Deployment = ({ modelId, modelName, onBack }) => {
   const checklistProgress = (completedItems / PRODUCTION_CHECKLIST.length) * 100;
 
   return (
-    <div className="min-h-screen bg-gray-50 p-6">
-      <div className="max-w-6xl mx-auto">
+    <div className="page-container">
+      <div className="content-wrapper">
         {/* Header */}
         <div className="flex items-center justify-between mb-6">
           <div>
             <div className="flex items-center">
-              <Rocket className="text-green-600 mr-3" size={28} />
-              <h1 className="text-2xl font-bold text-gray-800">Deploy Model</h1>
+              <div className="w-10 h-10 bg-gradient-to-br from-success-500 to-success-600 rounded-xl flex items-center justify-center mr-3 shadow-lg">
+                <Rocket className="text-white" size={20} />
+              </div>
+              <h1 className="text-2xl font-bold text-on-surface">Deploy Model</h1>
             </div>
-            <p className="text-gray-600 ml-10">
-              Package and deploy <span className="font-semibold">{modelName || modelId}</span> to production
+            <p className="text-on-surface-variant ml-13 mt-1">
+              Package and deploy <span className="font-semibold text-primary-500">{modelName || modelId}</span> to production
             </p>
           </div>
           <button
             onClick={onBack}
-            className="flex items-center px-4 py-2 text-gray-600 hover:text-gray-800 border border-gray-300 rounded hover:bg-gray-50 transition"
+            className="btn-secondary"
           >
-            <ArrowLeft size={18} className="mr-2" />
+            <ArrowLeft size={18} />
             Back
           </button>
         </div>
 
         {/* High-Level Overview Banner */}
-        <div className="bg-gradient-to-r from-green-600 to-emerald-700 rounded-xl shadow-lg p-6 mb-6 text-white">
+        <div className="card p-6 mb-6" style={{ background: 'rgba(16, 185, 129, 0.06)', borderColor: 'rgba(16, 185, 129, 0.2)' }}>
           <div className="flex items-start">
-            <Info size={24} className="mr-3 flex-shrink-0 mt-0.5" />
+            <Info size={24} className="text-success-500 mr-3 flex-shrink-0 mt-0.5" />
             <div>
-              <h2 className="text-xl font-bold mb-2">Deployment Flow Overview</h2>
-              <p className="opacity-90">
+              <h2 className="text-xl font-bold text-on-surface mb-2">Deployment Flow Overview</h2>
+              <p className="text-on-surface-variant">
                 Package your model inside a web service (API endpoint), deploy to a public host (real URL + HTTPS), 
                 and connect your website to call the service from frontend.
               </p>
@@ -375,8 +377,8 @@ const Deployment = ({ modelId, modelName, onBack }) => {
         </div>
 
         {/* Deployment Pipeline Overview */}
-        <div className="bg-white rounded-xl shadow-md p-6 mb-6">
-          <h2 className="text-lg font-semibold text-gray-800 mb-4">Deployment Pipeline</h2>
+        <div className="card p-6 mb-6">
+          <h2 className="text-lg font-semibold text-on-surface mb-4">Deployment Pipeline</h2>
           <div className="flex items-center justify-between">
             {['Export Model', 'Create API', 'Containerize', 'Live Endpoint', 'Frontend Ready'].map((step, idx) => {
               // Calculate completion based on deployment result - ALL steps complete when deployed
@@ -386,18 +388,18 @@ const Deployment = ({ modelId, modelName, onBack }) => {
               return (
                 <React.Fragment key={step}>
                   <div className="flex flex-col items-center">
-                    <div className={`w-12 h-12 rounded-full flex items-center justify-center ${
-                      isCompleted ? 'bg-green-500 text-white' : 
-                      isActive ? 'bg-blue-500 text-white animate-pulse' : 
-                      'bg-gray-200 text-gray-500'
+                    <div className={`w-12 h-12 rounded-full flex items-center justify-center font-bold ${
+                      isCompleted ? 'bg-success-500 text-white' : 
+                      isActive ? 'bg-primary-500 text-white animate-pulse' : 
+                      'bg-surface-container-high text-on-surface-variant border border-outline-variant'
                     }`}>
                       {isCompleted ? <CheckCircle size={20} /> : idx + 1}
                     </div>
-                    <span className="text-xs mt-2 text-gray-600 text-center max-w-[80px]">{step}</span>
+                    <span className="text-xs mt-2 text-on-surface-variant text-center max-w-[80px]">{step}</span>
                   </div>
                   {idx < 4 && (
-                    <div className={`flex-1 h-1 mx-2 ${
-                      deploymentResult ? 'bg-green-500' : (isCompleted && idx < 3 ? 'bg-green-500' : 'bg-gray-200')
+                    <div className={`flex-1 h-1 mx-2 rounded-full ${
+                      deploymentResult ? 'bg-success-500' : (isCompleted && idx < 3 ? 'bg-success-500' : 'bg-surface-container-highest')
                     }`} />
                   )}
                 </React.Fragment>
@@ -405,8 +407,8 @@ const Deployment = ({ modelId, modelName, onBack }) => {
             })}
           </div>
           {deploymentResult && (
-            <div className="mt-4 p-3 bg-green-50 border border-green-200 rounded-lg">
-              <p className="text-green-700 text-sm">
+            <div className="mt-4 p-3 rounded-xl" style={{ background: 'rgba(16, 185, 129, 0.08)', border: '1px solid rgba(16, 185, 129, 0.2)' }}>
+              <p className="text-success-500 text-sm">
                 🎉 <strong>All steps complete!</strong> Your model is live and ready to accept predictions. Use the code snippets below to integrate with your application.
               </p>
             </div>
@@ -414,20 +416,22 @@ const Deployment = ({ modelId, modelName, onBack }) => {
         </div>
 
         {/* Platform Selection */}
-        <div className="bg-white rounded-xl shadow-md p-6 mb-6">
+        <div className="section-card p-6 mb-6">
           <div 
             className="flex items-center justify-between cursor-pointer"
             onClick={() => setExpandedSection(expandedSection === 'platform' ? null : 'platform')}
           >
-            <h2 className="text-lg font-semibold text-gray-800">
-              <Server size={20} className="inline mr-2" />
+            <h2 className="text-lg font-semibold text-on-surface flex items-center">
+              <div className="w-8 h-8 bg-gradient-to-br from-primary-100 to-primary-50 rounded-lg flex items-center justify-center mr-3">
+                <Server size={16} className="text-primary-500" />
+              </div>
               Step 1: Select Deployment Platform
             </h2>
-            {expandedSection === 'platform' ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
+            {expandedSection === 'platform' ? <ChevronUp size={20} className="text-on-surface-variant" /> : <ChevronDown size={20} className="text-on-surface-variant" />}
           </div>
           
           {expandedSection === 'platform' && (
-            <div className="mt-4">
+            <div className="mt-5">
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 {Object.entries(PLATFORM_INFO).map(([key, platform]) => {
                   const Icon = platform.icon;
@@ -438,22 +442,20 @@ const Deployment = ({ modelId, modelName, onBack }) => {
                       key={key}
                       onClick={(e) => { e.stopPropagation(); setSelectedPlatform(key); }}
                       disabled={deploying}
-                      className={`p-4 rounded-lg border-2 transition text-left ${
-                        isSelected 
-                          ? 'border-green-500 bg-green-50' 
-                          : 'border-gray-200 hover:border-gray-300'
-                      } ${deploying ? 'opacity-50 cursor-not-allowed' : ''}`}
+                      className={`deploy-option ${isSelected ? 'deploy-option-selected' : ''} ${deploying ? 'opacity-50 cursor-not-allowed' : ''}`}
                     >
-                      <div className="flex items-center mb-2">
-                        <Icon size={24} className={isSelected ? 'text-green-600' : 'text-gray-500'} />
-                        <span className={`ml-2 font-semibold ${isSelected ? 'text-green-700' : 'text-gray-700'}`}>
+                      <div className="flex items-center mb-3">
+                        <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${isSelected ? 'bg-primary-100' : 'bg-surface-container-high'}`}>
+                          <Icon size={22} className={isSelected ? 'text-primary-500' : 'text-on-surface-variant'} />
+                        </div>
+                        <span className={`ml-3 font-semibold ${isSelected ? 'text-primary-500' : 'text-on-surface'}`}>
                           {platform.name}
                         </span>
                       </div>
-                      <p className="text-sm text-gray-500 mb-3">{platform.description}</p>
+                      <p className="text-sm text-on-surface-variant mb-3">{platform.description}</p>
                       <div className="flex flex-wrap gap-1">
                         {platform.features.map((f, i) => (
-                          <span key={i} className="px-2 py-0.5 bg-gray-100 text-gray-600 text-xs rounded">
+                          <span key={i} className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium" style={{ background: 'rgba(77, 142, 255, 0.12)', color: '#adc6ff' }}>
                             {f}
                           </span>
                         ))}
@@ -467,20 +469,22 @@ const Deployment = ({ modelId, modelName, onBack }) => {
         </div>
 
         {/* Package Contents */}
-        <div className="bg-white rounded-xl shadow-md p-6 mb-6">
+        <div className="section-card p-6 mb-6">
           <div 
             className="flex items-center justify-between cursor-pointer"
             onClick={() => setExpandedSection(expandedSection === 'package' ? null : 'package')}
           >
-            <h2 className="text-lg font-semibold text-gray-800">
-              <Package size={20} className="inline mr-2" />
+            <h2 className="text-lg font-semibold text-on-surface flex items-center">
+              <div className="w-8 h-8 bg-surface-container-high rounded-lg flex items-center justify-center mr-3">
+                <Package size={16} className="text-on-surface-variant" />
+              </div>
               Deployment Package Contents
             </h2>
-            {expandedSection === 'package' ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
+            {expandedSection === 'package' ? <ChevronUp size={20} className="text-on-surface-variant" /> : <ChevronDown size={20} className="text-on-surface-variant" />}
           </div>
           
           {expandedSection === 'package' && (
-            <div className="mt-4 grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div className="mt-5 grid grid-cols-2 md:grid-cols-4 gap-4">
               {[
                 { name: 'Trained Model', desc: 'model.joblib', icon: FileCode, tip: 'Your trained ML model' },
                 { name: 'Encoders', desc: 'encoders.joblib', icon: Activity, tip: 'Label encoders for categorical features' },
@@ -491,11 +495,11 @@ const Deployment = ({ modelId, modelName, onBack }) => {
                 { name: 'Docker Compose', desc: 'docker-compose.yml', icon: Container, tip: 'Multi-container orchestration' },
                 { name: 'Requirements', desc: 'requirements.txt', icon: FileCode, tip: 'Python dependencies' },
               ].map((item, idx) => (
-                <div key={idx} className="p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition group">
-                  <item.icon size={18} className="text-gray-500 mb-1" />
-                  <div className="font-medium text-gray-700 text-sm">{item.name}</div>
-                  <div className="text-xs text-gray-500">{item.desc}</div>
-                  <div className="text-xs text-blue-600 opacity-0 group-hover:opacity-100 transition mt-1">{item.tip}</div>
+                <div key={idx} className="p-4 bg-surface-container-low rounded-xl hover:bg-surface-container-high transition group border border-outline-variant">
+                  <item.icon size={18} className="text-primary-500 mb-2" />
+                  <div className="font-medium text-on-surface text-sm">{item.name}</div>
+                  <div className="text-xs text-on-surface-variant">{item.desc}</div>
+                  <div className="text-xs text-primary-500 opacity-0 group-hover:opacity-100 transition mt-1">{item.tip}</div>
                 </div>
               ))}
             </div>
@@ -503,11 +507,11 @@ const Deployment = ({ modelId, modelName, onBack }) => {
         </div>
 
         {/* Deploy Button */}
-        <div className="bg-gradient-to-r from-green-600 to-emerald-700 rounded-xl shadow-lg p-6 mb-6">
+        <div className="card p-6 mb-6" style={{ background: 'rgba(16, 185, 129, 0.06)', borderColor: 'rgba(16, 185, 129, 0.2)' }}>
           <div className="flex items-center justify-between">
-            <div className="text-white">
-              <h2 className="text-xl font-bold mb-1">Create Deployment Package</h2>
-              <p className="opacity-90">
+            <div>
+              <h2 className="text-xl font-bold text-on-surface mb-1">Create Deployment Package</h2>
+              <p className="text-on-surface-variant">
                 {selectedPlatform 
                   ? `Generate package for ${PLATFORM_INFO[selectedPlatform].name}` 
                   : 'Select a platform above to get started'}
@@ -516,20 +520,20 @@ const Deployment = ({ modelId, modelName, onBack }) => {
             <button
               onClick={handleDeploy}
               disabled={!selectedPlatform || deploying}
-              className={`flex items-center px-6 py-3 rounded-lg font-semibold transition shadow-md ${
+              className={`flex items-center gap-2 px-6 py-3 rounded-xl font-semibold transition ${
                 selectedPlatform && !deploying
-                  ? 'bg-white text-green-700 hover:bg-green-50'
-                  : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                  ? 'btn-success'
+                  : 'bg-surface-container-high text-on-surface-variant cursor-not-allowed border border-outline-variant'
               }`}
             >
               {deploying ? (
                 <>
-                  <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-green-700 mr-2" />
+                  <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
                   Creating Package...
                 </>
               ) : (
                 <>
-                  <Rocket size={18} className="mr-2" />
+                  <Rocket size={18} />
                   Generate Package
                 </>
               )}
@@ -539,27 +543,27 @@ const Deployment = ({ modelId, modelName, onBack }) => {
 
         {/* Task Progress with Real-Time Logs */}
         {taskId && taskStatus?.toUpperCase() === 'RUNNING' && (
-          <div className="bg-blue-50 border border-blue-200 rounded-xl p-6 mb-6">
+          <div className="card p-6 mb-6" style={{ background: 'rgba(77, 142, 255, 0.06)', borderColor: 'rgba(77, 142, 255, 0.2)' }}>
             <div className="flex items-center mb-4">
-              <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600 mr-3" />
+              <div className="w-6 h-6 border-2 border-primary-500 border-t-transparent rounded-full animate-spin mr-3" />
               <div>
-                <h3 className="font-semibold text-blue-800">Creating Deployment Package</h3>
-                <p className="text-blue-600 text-sm">Packaging model with all artifacts...</p>
+                <h3 className="font-semibold text-primary-500">Creating Deployment Package</h3>
+                <p className="text-on-surface-variant text-sm">Packaging model with all artifacts...</p>
               </div>
             </div>
             
             {/* Real-Time Log Console */}
-            <div className="bg-gray-900 rounded-lg p-4 max-h-64 overflow-y-auto font-mono text-sm">
+            <div className="console-container rounded-xl p-4 max-h-64 overflow-y-auto text-sm">
               {logs.length === 0 ? (
-                <div className="text-gray-400">Waiting for deployment logs...</div>
+                <div className="text-on-surface-variant">Waiting for deployment logs...</div>
               ) : (
                 logs.map((log, idx) => (
                   <div key={idx} className={`mb-1 ${
-                    log.level === 'ERROR' ? 'text-red-400' :
-                    log.level === 'WARNING' ? 'text-yellow-400' :
-                    'text-green-400'
+                    log.level === 'ERROR' ? 'text-error-400' :
+                    log.level === 'WARNING' ? 'text-warning-500' :
+                    'text-success-500'
                   }`}>
-                    <span className="text-gray-500">[{new Date(log.timestamp).toLocaleTimeString()}]</span>{' '}
+                    <span className="text-on-surface-variant">[{new Date(log.timestamp).toLocaleTimeString()}]</span>{' '}
                     {log.message}
                   </div>
                 ))
@@ -571,12 +575,12 @@ const Deployment = ({ modelId, modelName, onBack }) => {
 
         {/* Error */}
         {error && (
-          <div className="bg-red-50 border border-red-200 rounded-xl p-6 mb-6">
+          <div className="card p-6 mb-6" style={{ background: 'rgba(239, 68, 68, 0.06)', borderColor: 'rgba(239, 68, 68, 0.2)' }}>
             <div className="flex items-center">
-              <AlertTriangle size={24} className="text-red-500 mr-3" />
+              <AlertTriangle size={24} className="text-error-400 mr-3" />
               <div>
-                <h3 className="font-semibold text-red-800">Deployment Failed</h3>
-                <p className="text-red-600 text-sm">{error}</p>
+                <h3 className="font-semibold text-error-400">Deployment Failed</h3>
+                <p className="text-on-surface-variant text-sm">{error}</p>
               </div>
             </div>
           </div>
@@ -584,40 +588,40 @@ const Deployment = ({ modelId, modelName, onBack }) => {
 
         {/* Deployment Result */}
         {deploymentResult && (
-          <div className="bg-green-50 border border-green-200 rounded-xl p-6 mb-6">
+          <div className="card p-6 mb-6" style={{ background: 'rgba(16, 185, 129, 0.06)', borderColor: 'rgba(16, 185, 129, 0.2)' }}>
             <div className="flex items-start mb-4">
-              <CheckCircle size={24} className="text-green-500 mr-3 mt-0.5" />
+              <CheckCircle size={24} className="text-success-500 mr-3 mt-0.5" />
               <div>
-                <h3 className="font-semibold text-green-800">🎉 Model Deployed & Ready!</h3>
-                <p className="text-green-600 text-sm">Your model is LIVE and ready to serve predictions</p>
+                <h3 className="font-semibold text-success-500">🎉 Model Deployed & Ready!</h3>
+                <p className="text-on-surface-variant text-sm">Your model is LIVE and ready to serve predictions</p>
               </div>
             </div>
             
             <div className="space-y-4">
               {/* LIVE Prediction Endpoint */}
-              <div className="bg-white rounded-lg p-4 border-2 border-green-300">
+              <div className="bg-surface-container rounded-xl p-4 border-2 border-success-300">
                 <div className="flex items-center mb-2">
-                  <span className="inline-block w-3 h-3 bg-green-500 rounded-full animate-pulse mr-2"></span>
-                  <span className="text-sm font-semibold text-green-700">LIVE Prediction Endpoint</span>
+                  <span className="inline-block w-3 h-3 bg-success-500 rounded-full animate-pulse mr-2"></span>
+                  <span className="text-sm font-semibold text-success-500">LIVE Prediction Endpoint</span>
                 </div>
-                <div className="flex items-center justify-between bg-gray-100 rounded p-2">
-                  <code className="text-sm font-mono text-gray-800">
+                <div className="flex items-center justify-between bg-surface-container-low rounded-lg p-2">
+                  <code className="text-sm text-on-surface">
                     {deploymentResult.live_prediction_url || deploymentResult.deployment_url}
                   </code>
                   <button 
                     onClick={() => copyToClipboard(deploymentResult.live_prediction_url || deploymentResult.deployment_url, 'live-url')}
-                    className="ml-2 text-gray-500 hover:text-gray-700 flex items-center"
+                    className="ml-2 text-on-surface-variant hover:text-primary-500 flex items-center"
                   >
-                    {copied === 'live-url' ? <Check size={16} className="text-green-500" /> : <Copy size={16} />}
+                    {copied === 'live-url' ? <Check size={16} className="text-success-500" /> : <Copy size={16} />}
                   </button>
                 </div>
-                <p className="text-xs text-gray-500 mt-2">
+                <p className="text-xs text-on-surface-variant mt-2">
                   ✅ This endpoint is ready to use NOW - no additional setup required!
                 </p>
               </div>
               
               {/* Frontend Integration Code */}
-              <div className="bg-gray-900 rounded-lg p-4 text-white">
+              <div className="bg-surface-container-lowest rounded-lg p-4 text-white">
                 <div className="flex items-center justify-between mb-3">
                   <div className="flex items-center">
                     <Code size={16} className="mr-2 text-blue-400" />
@@ -641,12 +645,12 @@ const result = await predict({
   feature2: 123
 });
 console.log("Prediction:", result.prediction);`, 'js-code')}
-                    className="text-gray-400 hover:text-white"
+                    className="text-on-surface-variant hover:text-on-surface"
                   >
-                    {copied === 'js-code' ? <Check size={14} className="text-green-400" /> : <Copy size={14} />}
+                    {copied === 'js-code' ? <Check size={14} className="text-success-400" /> : <Copy size={14} />}
                   </button>
                 </div>
-                <pre className="text-sm text-green-400 overflow-x-auto">
+                <pre className="text-sm text-success-400 overflow-x-auto">
 {`// Make predictions from your frontend
 const predict = async (features) => {
   const response = await fetch("${deploymentResult.live_prediction_url || deploymentResult.deployment_url}", {
@@ -668,10 +672,10 @@ console.log("Prediction:", result.prediction);`}
               </div>
               
               {/* Python Integration Code */}
-              <div className="bg-gray-900 rounded-lg p-4 text-white">
+              <div className="bg-surface-container-lowest rounded-lg p-4 text-white">
                 <div className="flex items-center justify-between mb-3">
                   <div className="flex items-center">
-                    <Code size={16} className="mr-2 text-yellow-400" />
+                    <Code size={16} className="mr-2 text-warning-500" />
                     <span className="text-sm font-semibold text-white">Python Integration</span>
                   </div>
                   <button 
@@ -684,12 +688,12 @@ response = requests.post(
 )
 result = response.json()
 print("Prediction:", result["prediction"])`, 'py-code')}
-                    className="text-gray-400 hover:text-white"
+                    className="text-on-surface-variant hover:text-on-surface"
                   >
-                    {copied === 'py-code' ? <Check size={14} className="text-green-400" /> : <Copy size={14} />}
+                    {copied === 'py-code' ? <Check size={14} className="text-success-400" /> : <Copy size={14} />}
                   </button>
                 </div>
-                <pre className="text-sm text-yellow-400 overflow-x-auto">
+                <pre className="text-sm text-warning-500 overflow-x-auto">
 {`import requests
 
 # Make a prediction
@@ -703,22 +707,22 @@ print("Prediction:", result["prediction"])`}
               </div>
               
               {/* cURL Example */}
-              <div className="bg-gray-900 rounded-lg p-4 text-white">
+              <div className="bg-surface-container-lowest rounded-lg p-4 text-white">
                 <div className="flex items-center justify-between mb-3">
                   <div className="flex items-center">
-                    <Terminal size={16} className="mr-2 text-gray-400" />
+                    <Terminal size={16} className="mr-2 text-on-surface-variant" />
                     <span className="text-sm font-semibold text-white">cURL / Command Line</span>
                   </div>
                   <button 
                     onClick={() => copyToClipboard(`curl -X POST "${deploymentResult.live_prediction_url || deploymentResult.deployment_url}" \\
   -H "Content-Type: application/json" \\
   -d '{"features": {"feature1": "value1", "feature2": 123}}'`, 'curl-code')}
-                    className="text-gray-400 hover:text-white"
+                    className="text-on-surface-variant hover:text-on-surface"
                   >
-                    {copied === 'curl-code' ? <Check size={14} className="text-green-400" /> : <Copy size={14} />}
+                    {copied === 'curl-code' ? <Check size={14} className="text-success-400" /> : <Copy size={14} />}
                   </button>
                 </div>
-                <pre className="text-sm text-cyan-400 overflow-x-auto">
+                <pre className="text-sm text-accent-cyan overflow-x-auto">
 {`curl -X POST "${deploymentResult.live_prediction_url || deploymentResult.deployment_url}" \\
   -H "Content-Type: application/json" \\
   -d '{"features": {"feature1": "value1", "feature2": 123}}'`}
@@ -726,17 +730,17 @@ print("Prediction:", result["prediction"])`}
               </div>
               
               {/* Get Feature Info Button */}
-              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+              <div className="rounded-lg p-4" style={{ background: 'rgba(77, 142, 255, 0.06)', border: '1px solid rgba(77, 142, 255, 0.15)' }}>
                 <div className="flex items-center justify-between">
                   <div>
-                    <h4 className="font-semibold text-blue-800">Need exact feature names?</h4>
-                    <p className="text-blue-600 text-sm">Get the full API documentation including all required features</p>
+                    <h4 className="font-semibold text-primary-500">Need exact feature names?</h4>
+                    <p className="text-on-surface-variant text-sm">Get the full API documentation including all required features</p>
                   </div>
                   <a 
                     href={`${import.meta.env.VITE_API_URL || 'http://localhost:8000'}/api/predict/${modelId}/info`}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition flex items-center"
+                    className="px-4 py-2 bg-primary-400 text-white rounded-lg hover:bg-primary-500 transition flex items-center"
                   >
                     <ExternalLink size={16} className="mr-2" />
                     View API Docs
@@ -744,19 +748,19 @@ print("Prediction:", result["prediction"])`}
                 </div>
               </div>
               
-              <hr className="border-gray-200" />
+              <hr className="border-outline-variant" />
               
               {/* Standalone Package Download */}
-              <div className="bg-gray-50 rounded-lg p-4">
-                <h4 className="font-semibold text-gray-700 mb-2">📦 Standalone Deployment Package</h4>
-                <p className="text-gray-600 text-sm mb-3">
+              <div className="bg-surface-container-low rounded-xl p-4 border border-outline-variant">
+                <h4 className="font-semibold text-on-surface mb-2">📦 Standalone Deployment Package</h4>
+                <p className="text-on-surface-variant text-sm mb-3">
                   Download the complete package to deploy as a separate service on your own infrastructure.
                 </p>
                 
                 {/* Download Button */}
                 <button
                   onClick={() => handleDownload(deploymentResult.deployment_id)}
-                  className="w-full flex items-center justify-center px-4 py-3 bg-gray-700 text-white rounded-lg hover:bg-gray-800 transition"
+                  className="w-full btn-primary flex items-center justify-center"
                 >
                   <Download size={18} className="mr-2" />
                   Download Deployment Package (.zip)
@@ -765,10 +769,10 @@ print("Prediction:", result["prediction"])`}
                 {/* Package Files */}
                 {deploymentResult.files && deploymentResult.files.length > 0 && (
                   <div className="mt-3">
-                    <div className="text-sm font-medium text-gray-700 mb-2">Package Contents:</div>
+                    <div className="text-sm font-medium text-on-surface mb-2">Package Contents:</div>
                     <div className="flex flex-wrap gap-2">
                       {deploymentResult.files.map((file, idx) => (
-                        <span key={idx} className="px-2 py-1 bg-white border border-gray-200 text-gray-600 text-xs rounded">
+                        <span key={idx} className="badge badge-primary text-xs">
                           {file}
                         </span>
                       ))}
@@ -781,68 +785,67 @@ print("Prediction:", result["prediction"])`}
         )}
 
         {/* Cloud Deployment Options */}
-        <div className="bg-white rounded-xl shadow-md p-6 mb-6">
+        <div className="card p-6 mb-6">
           <div 
             className="flex items-center justify-between cursor-pointer"
             onClick={() => setExpandedSection(expandedSection === 'cloud' ? null : 'cloud')}
           >
-            <h2 className="text-lg font-semibold text-gray-800">
-              <Cloud size={20} className="inline mr-2" />
+            <h2 className="text-lg font-semibold text-on-surface">
+              <Cloud size={20} className="inline mr-2 text-primary-500" />
               Step 2: Deploy to Cloud (Choose Provider)
             </h2>
-            {expandedSection === 'cloud' ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
+            {expandedSection === 'cloud' ? <ChevronUp size={20} className="text-on-surface-variant" /> : <ChevronDown size={20} className="text-on-surface-variant" />}
           </div>
           
           {expandedSection === 'cloud' && (
             <div className="mt-4 space-y-3">
-              <p className="text-gray-600 text-sm mb-4">
+              <p className="text-on-surface-variant text-sm mb-4">
                 After generating your package, deploy to any of these hosting services to get a public HTTPS URL:
               </p>
               
               {CLOUD_PROVIDERS.map((provider) => (
                 <div 
                   key={provider.id}
-                  className="border border-gray-200 rounded-lg overflow-hidden"
+                  className="border border-outline-variant rounded-xl overflow-hidden bg-surface-container"
                 >
                   <button
                     onClick={() => setExpandedProvider(expandedProvider === provider.id ? null : provider.id)}
-                    className="w-full p-4 flex items-center justify-between hover:bg-gray-50 transition"
+                    className="w-full p-4 flex items-center justify-between hover:bg-surface-container-low transition"
                   >
                     <div className="flex items-center">
                       <span className="text-2xl mr-3">{provider.icon}</span>
                       <div className="text-left">
-                        <div className="font-semibold text-gray-800">{provider.name}</div>
-                        <div className="text-sm text-gray-500">{provider.description}</div>
+                        <div className="font-semibold text-on-surface">{provider.name}</div>
+                        <div className="text-sm text-on-surface-variant">{provider.description}</div>
                       </div>
                     </div>
                     <div className="flex items-center space-x-3">
-                      <span className={`px-2 py-1 text-xs rounded ${
-                        provider.difficulty === 'Very Easy' ? 'bg-green-100 text-green-700' :
-                        provider.difficulty === 'Easy' ? 'bg-blue-100 text-blue-700' :
-                        'bg-yellow-100 text-yellow-700'
-                      }`}>
+                      <span className={`px-2 py-1 text-xs rounded-lg font-medium ${                        provider.difficulty === 'Very Easy' ? 'text-success-500' :
+                        provider.difficulty === 'Easy' ? 'text-primary-500' :
+                        'text-warning-500'
+                      }`} style={{ background: provider.difficulty === 'Very Easy' ? 'rgba(16,185,129,0.1)' : provider.difficulty === 'Easy' ? 'rgba(77,142,255,0.1)' : 'rgba(245,158,11,0.1)' }}>
                         {provider.difficulty}
                       </span>
-                      <span className="px-2 py-1 bg-gray-100 text-gray-600 text-xs rounded">
+                      <span className="px-2 py-1 bg-surface-container-high text-on-surface-variant text-xs rounded-lg font-medium">
                         {provider.cost}
                       </span>
-                      {expandedProvider === provider.id ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
+                      {expandedProvider === provider.id ? <ChevronUp size={18} className="text-on-surface-variant" /> : <ChevronDown size={18} className="text-on-surface-variant" />}
                     </div>
                   </button>
                   
                   {expandedProvider === provider.id && (
-                    <div className="px-4 pb-4 bg-gray-50">
-                      <div className="bg-gray-900 rounded-lg p-4 text-white">
+                    <div className="px-4 pb-4 bg-surface-container-low">
+                      <div className="console-container rounded-xl p-4">
                         <div className="flex items-center justify-between mb-2">
-                          <span className="text-sm text-gray-400">Deployment Commands</span>
+                          <span className="text-sm text-on-surface-variant">Deployment Commands</span>
                           <button 
                             onClick={() => copyToClipboard(provider.commands.join('\n'), provider.id)}
-                            className="text-gray-400 hover:text-white"
+                            className="text-on-surface-variant hover:text-primary-500"
                           >
-                            {copied === provider.id ? <Check size={14} className="text-green-400" /> : <Copy size={14} />}
+                            {copied === provider.id ? <Check size={14} className="text-success-500" /> : <Copy size={14} />}
                           </button>
                         </div>
-                        <pre className="text-sm text-green-400 overflow-x-auto whitespace-pre-wrap">
+                        <pre className="text-sm text-success-500 overflow-x-auto whitespace-pre-wrap">
                           {provider.commands.join('\n')}
                         </pre>
                       </div>
@@ -855,32 +858,32 @@ print("Prediction:", result["prediction"])`}
         </div>
 
         {/* Security & CORS */}
-        <div className="bg-white rounded-xl shadow-md p-6 mb-6">
+        <div className="card p-6 mb-6">
           <div 
             className="flex items-center justify-between cursor-pointer"
             onClick={() => setExpandedSection(expandedSection === 'security' ? null : 'security')}
           >
-            <h2 className="text-lg font-semibold text-gray-800">
-              <Shield size={20} className="inline mr-2" />
+            <h2 className="text-lg font-semibold text-on-surface">
+              <Shield size={20} className="inline mr-2 text-warning-500" />
               Security & Production Considerations
             </h2>
-            {expandedSection === 'security' ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
+            {expandedSection === 'security' ? <ChevronUp size={20} className="text-on-surface-variant" /> : <ChevronDown size={20} className="text-on-surface-variant" />}
           </div>
           
           {expandedSection === 'security' && (
             <div className="mt-4 space-y-4">
               {/* CORS Configuration */}
-              <div className="p-4 bg-blue-50 rounded-lg">
+              <div className="p-4 rounded-xl" style={{ background: 'rgba(77, 142, 255, 0.06)', border: '1px solid rgba(77, 142, 255, 0.15)' }}>
                 <div className="flex items-center mb-2">
-                  <Globe size={18} className="text-blue-600 mr-2" />
-                  <h3 className="font-semibold text-blue-800">CORS Configuration</h3>
+                  <Globe size={18} className="text-primary-500 mr-2" />
+                  <h3 className="font-semibold text-primary-500">CORS Configuration</h3>
                 </div>
-                <p className="text-sm text-blue-700 mb-3">
+                <p className="text-sm text-on-surface-variant mb-3">
                   Enable CORS so browser requests from your website domain succeed:
                 </p>
-                <div className="bg-gray-900 rounded-lg p-4 text-white">
+                <div className="console-container rounded-xl p-4">
                   <div className="flex items-center justify-between mb-2">
-                    <span className="text-sm text-gray-400">FastAPI CORS Middleware</span>
+                    <span className="text-sm text-on-surface-variant">FastAPI CORS Middleware</span>
                     <button 
                       onClick={() => copyToClipboard(`from fastapi.middleware.cors import CORSMiddleware
 
@@ -891,12 +894,12 @@ app.add_middleware(
     allow_methods=["POST"],
     allow_headers=["*"],
 )`, 'cors')}
-                      className="text-gray-400 hover:text-white"
+                      className="text-on-surface-variant hover:text-primary-500"
                     >
-                      {copied === 'cors' ? <Check size={14} className="text-green-400" /> : <Copy size={14} />}
+                      {copied === 'cors' ? <Check size={14} className="text-success-500" /> : <Copy size={14} />}
                     </button>
                   </div>
-                  <pre className="text-sm text-green-400 overflow-x-auto">
+                  <pre className="text-sm text-success-500 overflow-x-auto">
 {`from fastapi.middleware.cors import CORSMiddleware
 
 app.add_middleware(
@@ -911,16 +914,16 @@ app.add_middleware(
               </div>
 
               {/* API Key Security */}
-              <div className="p-4 bg-yellow-50 rounded-lg">
+              <div className="p-4 rounded-xl" style={{ background: 'rgba(245, 158, 11, 0.06)', border: '1px solid rgba(245, 158, 11, 0.15)' }}>
                 <div className="flex items-center mb-2">
-                  <Key size={18} className="text-yellow-600 mr-2" />
-                  <h3 className="font-semibold text-yellow-800">API Key Authentication</h3>
+                  <Key size={18} className="text-warning-500 mr-2" />
+                  <h3 className="font-semibold text-warning-500">API Key Authentication</h3>
                 </div>
-                <p className="text-sm text-yellow-700 mb-3">
+                <p className="text-sm text-on-surface-variant mb-3">
                   Add API key check to prevent abuse:
                 </p>
-                <div className="bg-gray-900 rounded-lg p-4 text-white">
-                  <pre className="text-sm text-green-400 overflow-x-auto">
+                <div className="console-container rounded-xl p-4">
+                  <pre className="text-sm text-success-500 overflow-x-auto">
 {`from fastapi import Header, HTTPException
 
 API_KEYS = {"your-secret-key-here"}
@@ -940,42 +943,42 @@ async def predict(request: PredictRequest, api_key: str = Depends(verify_api_key
 
               {/* Important Considerations Grid */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="p-4 bg-gray-50 rounded-lg">
+                <div className="p-4 bg-surface-container-low rounded-xl border border-outline-variant">
                   <div className="flex items-center mb-2">
-                    <Lock size={18} className="text-gray-600 mr-2" />
-                    <h4 className="font-medium text-gray-800">HTTPS & Domain</h4>
+                    <Lock size={18} className="text-primary-500 mr-2" />
+                    <h4 className="font-medium text-on-surface">HTTPS & Domain</h4>
                   </div>
-                  <p className="text-sm text-gray-600">
+                  <p className="text-sm text-on-surface-variant">
                     Cloud hosts provide HTTPS by default. Point your domain to the service for custom URLs.
                   </p>
                 </div>
                 
-                <div className="p-4 bg-gray-50 rounded-lg">
+                <div className="p-4 bg-surface-container-low rounded-xl border border-outline-variant">
                   <div className="flex items-center mb-2">
-                    <RefreshCw size={18} className="text-gray-600 mr-2" />
-                    <h4 className="font-medium text-gray-800">Preprocessing Parity</h4>
+                    <RefreshCw size={18} className="text-success-500 mr-2" />
+                    <h4 className="font-medium text-on-surface">Preprocessing Parity</h4>
                   </div>
-                  <p className="text-sm text-gray-600">
+                  <p className="text-sm text-on-surface-variant">
                     Include the exact preprocessing used during training (normalization, encoding, etc.)
                   </p>
                 </div>
                 
-                <div className="p-4 bg-gray-50 rounded-lg">
+                <div className="p-4 bg-surface-container-low rounded-xl border border-outline-variant">
                   <div className="flex items-center mb-2">
-                    <Zap size={18} className="text-gray-600 mr-2" />
-                    <h4 className="font-medium text-gray-800">Model Optimization</h4>
+                    <Zap size={18} className="text-warning-500 mr-2" />
+                    <h4 className="font-medium text-on-surface">Model Optimization</h4>
                   </div>
-                  <p className="text-sm text-gray-600">
+                  <p className="text-sm text-on-surface-variant">
                     For large models, consider quantization, ONNX, or TorchScript for better latency.
                   </p>
                 </div>
                 
-                <div className="p-4 bg-gray-50 rounded-lg">
+                <div className="p-4 bg-surface-container-low rounded-xl border border-outline-variant">
                   <div className="flex items-center mb-2">
-                    <BarChart3 size={18} className="text-gray-600 mr-2" />
-                    <h4 className="font-medium text-gray-800">Monitoring</h4>
+                    <BarChart3 size={18} className="text-success-500 mr-2" />
+                    <h4 className="font-medium text-on-surface">Monitoring</h4>
                   </div>
-                  <p className="text-sm text-gray-600">
+                  <p className="text-sm text-on-surface-variant">
                     Collect logs, errors, and prediction distributions to detect drift.
                   </p>
                 </div>
@@ -985,26 +988,26 @@ async def predict(request: PredictRequest, api_key: str = Depends(verify_api_key
         </div>
 
         {/* Frontend Integration */}
-        <div className="bg-white rounded-xl shadow-md p-6 mb-6">
+        <div className="card p-6 mb-6">
           <div 
             className="flex items-center justify-between cursor-pointer"
             onClick={() => setExpandedSection(expandedSection === 'frontend' ? null : 'frontend')}
           >
-            <h2 className="text-lg font-semibold text-gray-800">
-              <Globe size={20} className="inline mr-2" />
+            <h2 className="text-lg font-semibold text-on-surface">
+              <Globe size={20} className="inline mr-2 text-success-500" />
               Step 3: Connect from Your Website
             </h2>
-            {expandedSection === 'frontend' ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
+            {expandedSection === 'frontend' ? <ChevronUp size={20} className="text-on-surface-variant" /> : <ChevronDown size={20} className="text-on-surface-variant" />}
           </div>
           
           {expandedSection === 'frontend' && (
             <div className="mt-4">
-              <p className="text-gray-600 text-sm mb-4">
+              <p className="text-on-surface-variant text-sm mb-4">
                 Call your deployed API from client-side JavaScript:
               </p>
-              <div className="bg-gray-900 rounded-lg p-4 text-white">
+              <div className="console-container rounded-xl p-4">
                 <div className="flex items-center justify-between mb-2">
-                  <span className="text-sm text-gray-400">Frontend JavaScript</span>
+                  <span className="text-sm text-on-surface-variant">Frontend JavaScript</span>
                   <button 
                     onClick={() => copyToClipboard(`async function getPrediction(features) {
   const resp = await fetch("https://your-api-domain.com/predict", {
@@ -1028,12 +1031,12 @@ const prediction = await getPrediction({
   feature2: "value"
 });
 console.log(prediction.label, prediction.confidence);`, 'frontend')}
-                    className="text-gray-400 hover:text-white"
+                    className="text-on-surface-variant hover:text-primary-500"
                   >
-                    {copied === 'frontend' ? <Check size={14} className="text-green-400" /> : <Copy size={14} />}
+                    {copied === 'frontend' ? <Check size={14} className="text-success-500" /> : <Copy size={14} />}
                   </button>
                 </div>
-                <pre className="text-sm text-green-400 overflow-x-auto">
+                <pre className="text-sm text-success-500 overflow-x-auto">
 {`async function getPrediction(features) {
   const resp = await fetch("https://your-api-domain.com/predict", {
     method: "POST",
@@ -1063,30 +1066,30 @@ console.log(prediction.label, prediction.confidence);`}
         </div>
 
         {/* Production Checklist */}
-        <div className="bg-white rounded-xl shadow-md p-6 mb-6">
+        <div className="card p-6 mb-6">
           <div 
             className="flex items-center justify-between cursor-pointer"
             onClick={() => setExpandedSection(expandedSection === 'checklist' ? null : 'checklist')}
           >
             <div className="flex items-center">
-              <h2 className="text-lg font-semibold text-gray-800">
-                <CheckCircle size={20} className="inline mr-2" />
+              <h2 className="text-lg font-semibold text-on-surface">
+                <CheckCircle size={20} className="inline mr-2 text-success-500" />
                 Production Checklist
               </h2>
-              <span className="ml-3 text-sm text-gray-500">
+              <span className="ml-3 text-sm text-on-surface-variant">
                 {completedItems}/{PRODUCTION_CHECKLIST.length} completed
               </span>
             </div>
-            {expandedSection === 'checklist' ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
+            {expandedSection === 'checklist' ? <ChevronUp size={20} className="text-on-surface-variant" /> : <ChevronDown size={20} className="text-on-surface-variant" />}
           </div>
           
           {expandedSection === 'checklist' && (
             <div className="mt-4">
               {/* Progress Bar */}
               <div className="mb-4">
-                <div className="w-full bg-gray-200 rounded-full h-2">
+                <div className="w-full bg-surface-container-high rounded-full h-2 overflow-hidden">
                   <div 
-                    className="bg-green-500 h-2 rounded-full transition-all duration-300"
+                    className="bg-success-500 h-2 rounded-full transition-all duration-300"
                     style={{ width: `${checklistProgress}%` }}
                   />
                 </div>
@@ -1097,23 +1100,23 @@ console.log(prediction.label, prediction.confidence);`}
                   <button
                     key={item.id}
                     onClick={() => toggleChecklist(item.id)}
-                    className={`w-full flex items-center p-3 rounded-lg transition ${
+                    className={`w-full flex items-center p-3 rounded-xl transition ${
                       checklist[item.id] 
-                        ? 'bg-green-50 border border-green-200' 
-                        : 'bg-gray-50 hover:bg-gray-100 border border-transparent'
+                        ? 'border border-success-500/30' 
+                        : 'bg-surface-container-low hover:bg-surface-container-high border border-transparent'
                     }`}
                   >
                     <div className={`w-6 h-6 rounded-full flex items-center justify-center mr-3 ${
                       checklist[item.id] 
-                        ? 'bg-green-500 text-white' 
-                        : 'bg-gray-200 text-gray-400'
+                        ? 'bg-success-500 text-white' 
+                        : 'bg-surface-container-high text-on-surface-variant border border-outline-variant'
                     }`}>
                       {checklist[item.id] ? <Check size={14} /> : null}
                     </div>
-                    <span className={`flex-1 text-left ${checklist[item.id] ? 'text-green-800' : 'text-gray-700'}`}>
+                    <span className={`flex-1 text-left ${checklist[item.id] ? 'text-success-500' : 'text-on-surface-variant'}`}>
                       {item.text}
                     </span>
-                    <span className="px-2 py-0.5 bg-gray-200 text-gray-600 text-xs rounded">
+                    <span className="badge badge-primary text-xs">
                       {item.category}
                     </span>
                   </button>
@@ -1124,26 +1127,26 @@ console.log(prediction.label, prediction.confidence);`}
         </div>
 
         {/* API Usage Example */}
-        <div className="bg-white rounded-xl shadow-md p-6 mb-6">
-          <h2 className="text-lg font-semibold text-gray-800 mb-4">
-            <FileCode size={20} className="inline mr-2" />
+        <div className="card p-6 mb-6">
+          <h2 className="text-lg font-semibold text-on-surface mb-4">
+            <FileCode size={20} className="inline mr-2 text-primary-500" />
             API Usage Example
           </h2>
-          <div className="bg-gray-900 rounded-lg p-4 text-white overflow-x-auto">
+          <div className="console-container rounded-xl p-4 overflow-x-auto">
             <div className="flex items-center justify-between mb-2">
-              <span className="text-sm text-gray-400">cURL Example</span>
+              <span className="text-sm text-on-surface-variant">cURL Example</span>
               <button 
                 onClick={() => copyToClipboard(`curl -X POST "http://localhost:8080/predict" \\
   -H "Content-Type: application/json" \\
   -d '{
     "data": {"feature1": 100, "feature2": "value"}
   }'`, 'curl')}
-                className="text-gray-400 hover:text-white"
+                className="text-on-surface-variant hover:text-primary-500"
               >
-                {copied === 'curl' ? <Check size={14} className="text-green-400" /> : <Copy size={14} />}
+                {copied === 'curl' ? <Check size={14} className="text-success-500" /> : <Copy size={14} />}
               </button>
             </div>
-            <pre className="text-sm">
+            <pre className="text-sm text-success-500">
 {`# Make a prediction
 curl -X POST "http://localhost:8080/predict" \\
   -H "Content-Type: application/json" \\
@@ -1164,23 +1167,23 @@ curl -X POST "http://localhost:8080/predict" \\
 
         {/* Existing Deployments */}
         {existingDeployments.length > 0 && (
-          <div className="bg-white rounded-xl shadow-md p-6">
-            <h2 className="text-lg font-semibold text-gray-800 mb-4">
-              <Clock size={20} className="inline mr-2" />
+          <div className="card p-6">
+            <h2 className="text-lg font-semibold text-on-surface mb-4">
+              <Clock size={20} className="inline mr-2 text-success-500" />
               Previous Deployments
             </h2>
             <div className="space-y-3">
               {existingDeployments.map((dep) => (
-                <div key={dep.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                <div key={dep.id} className="flex items-center justify-between p-3 bg-surface-container-low rounded-xl border border-outline-variant">
                   <div>
-                    <div className="font-medium text-gray-700 capitalize">{dep.platform}</div>
-                    <div className="text-sm text-gray-500">{dep.created_at}</div>
+                    <div className="font-medium text-on-surface capitalize">{dep.platform}</div>
+                    <div className="text-sm text-on-surface-variant">{dep.created_at}</div>
                   </div>
                   <div className="flex items-center space-x-2">
-                    <code className="text-xs bg-gray-200 px-2 py-1 rounded">{dep.url}</code>
+                    <code className="text-xs bg-surface-container-high px-2 py-1 rounded-lg text-on-surface-variant">{dep.url}</code>
                     <button
                       onClick={() => handleDownload(dep.id)}
-                      className="p-2 text-blue-600 hover:bg-blue-50 rounded"
+                      className="p-2 text-primary-500 hover:bg-surface-container-high rounded-lg transition"
                       title="Download Package"
                     >
                       <Download size={16} />

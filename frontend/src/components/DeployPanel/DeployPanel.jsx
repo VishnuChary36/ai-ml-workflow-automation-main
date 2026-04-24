@@ -3,7 +3,7 @@ import { Rocket, Download } from 'lucide-react';
 
 const DeployPanel = ({ modelId, modelName }) => {
   return (
-    <div className="bg-white rounded-lg shadow-md p-6">
+    <div className="bg-surface-container rounded-lg shadow-md p-6">
       <h2 className="text-2xl font-bold text-gray-800 mb-4">Deploy Model</h2>
       
       {!modelId ? (
@@ -12,8 +12,8 @@ const DeployPanel = ({ modelId, modelName }) => {
         </div>
       ) : (
         <div className="space-y-6">
-          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-            <p className="text-sm text-blue-800">
+          <div className="bg-primary-50 border border-primary-200 rounded-lg p-4">
+            <p className="text-sm text-primary-800">
               <span className="font-semibold">Model:</span> {modelName || modelId}
             </p>
           </div>
@@ -31,7 +31,7 @@ const DeployPanel = ({ modelId, modelName }) => {
           </div>
           
           <div className="flex space-x-4">
-            <button className="flex-1 px-6 py-3 bg-blue-600 text-white rounded-lg font-semibold hover:bg-blue-700 transition flex items-center justify-center">
+            <button className="flex-1 px-6 py-3 bg-primary-400 text-white rounded-lg font-semibold hover:bg-primary-500 transition flex items-center justify-center">
               <Rocket size={20} className="mr-2" />
               Deploy
             </button>

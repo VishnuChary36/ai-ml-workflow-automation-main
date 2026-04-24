@@ -133,7 +133,7 @@ class ModelPredictor:
                 self._scalers = joblib.load(scalers_file)
             
             self._loaded = True
-            print(f"✓ Loaded model from {self.model_path}")
+            print(f"[OK] Loaded model from {self.model_path}")
     
     def _ensure_loaded(self):
         """Ensure model is loaded."""

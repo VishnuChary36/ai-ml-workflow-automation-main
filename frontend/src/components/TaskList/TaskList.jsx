@@ -1,60 +1,65 @@
 import React from 'react';
 import { Clock, CheckCircle, XCircle, Loader } from 'lucide-react';
+import EmptyState from '../UI/EmptyState';
 
 const TaskList = ({ tasks = [] }) => {
   const getStatusIcon = (status) => {
     switch (status) {
       case 'completed':
-        return <CheckCircle className="text-green-500" size={20} />;
+        return <CheckCircle className="text-success-500" size={20} />;
       case 'failed':
-        return <XCircle className="text-red-500" size={20} />;
+        return <XCircle className="text-error-400" size={20} />;
       case 'running':
-        return <Loader className="text-blue-500 animate-spin" size={20} />;
+        return <Loader className="text-primary-500 animate-spin" size={20} />;
       default:
-        return <Clock className="text-gray-400" size={20} />;
+        return <Clock className="text-on-surface-variant" size={20} />;
     }
   };
 
-  const getStatusColor = (status) => {
+  const getStatusBadge = (status) => {
     switch (status) {
       case 'completed':
-        return 'bg-green-100 text-green-800';
+        return 'badge badge-success';
       case 'failed':
-        return 'bg-red-100 text-red-800';
+        return 'badge badge-error';
       case 'running':
-        return 'bg-blue-100 text-blue-800';
+        return 'badge badge-primary';
       default:
-        return 'bg-gray-100 text-gray-800';
+        return 'badge badge-slate';
     }
   };
 
   return (
-    <div className="bg-white rounded-lg shadow-md p-6">
-      <h2 className="text-2xl font-bold text-gray-800 mb-4">Recent Tasks</h2>
+    <div className="section-card-elevated p-6">
+      <h2 className="text-xl font-bold text-on-surface mb-4">Recent Tasks</h2>
       
       {tasks.length === 0 ? (
-        <p className="text-gray-500 text-center py-8">No tasks yet</p>
+        <EmptyState
+          icon={Clock}
+          title="No tasks yet"
+          description="Tasks will appear here once you start processing data or training models."
+        />
       ) : (
         <div className="space-y-3">
           {tasks.map((task) => (
             <div
               key={task.task_id}
-              className="border border-gray-200 rounded-lg p-4 hover:border-gray-300 transition"
+              className="border border-outline-variant rounded-xl p-4 hover:border-primary-200 hover:bg-surface-container-low/50 transition-all duration-200"
             >
               <div className="flex items-center justify-between">
-                <div className="flex items-center space-x-3 flex-1">
+                <div className="flex items-center space-x-3 flex-1 min-w-0">
                   {getStatusIcon(task.status)}
-                  <div>
-                    <p className="font-semibold text-gray-800">{task.task_id}</p>
-                    <p className="text-sm text-gray-600">{task.task_type}</p>
+                  <div className="min-w-0">
+                    <p className="font-semibold text-on-surface truncate">{task.task_id}</p>
+                    <p className="text-sm text-on-surface-variant">{task.task_type}</p>
                   </div>
                 </div>
                 
-                <div className="flex items-center space-x-3">
-                  <span className={`px-3 py-1 rounded-full text-xs font-semibold ${getStatusColor(task.status)}`}>
+                <div className="flex items-center space-x-3 flex-shrink-0">
+                  <span className={getStatusBadge(task.status)}>
                     {task.status}
                   </span>
-                  <span className="text-sm text-gray-500">
+                  <span className="text-sm text-on-surface-variant">
                     {new Date(task.created_at).toLocaleTimeString()}
                   </span>
                 </div>

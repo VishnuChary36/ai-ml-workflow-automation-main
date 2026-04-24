@@ -373,7 +373,7 @@ def create_rate_limit_config(redis_url: Optional[str] = None) -> RateLimitConfig
     config.add_route_limit("/api/predict", 200, 60)  # Higher limit for predictions
     config.add_route_limit("/api/predict/batch", 50, 60)  # Lower for batch
     config.add_route_limit("/api/upload", 10, 60)  # Low limit for uploads
-    config.add_route_limit("/api/train", 5, 60)  # Very low for training
-    config.add_route_limit("/api/deploy", 5, 60)  # Very low for deployment
+    config.add_route_limit("/api/train", 50, 60)  # Increased from 5 to 50 for training
+    config.add_route_limit("/api/deploy", 10, 60)  # Increased from 5 to 10 for deployment
     
     return config

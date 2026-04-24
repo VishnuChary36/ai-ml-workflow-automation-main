@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, Download, Sparkles, Info, AlertTriangle, CheckCircle, HelpCircle, Zap, GitBranch, BarChart3, Target, Layers, Rocket } from 'lucide-react';
+import { ArrowLeft, Download, Eye, Info, AlertTriangle, CheckCircle, HelpCircle, Zap, GitBranch, BarChart3, Target, Layers, Rocket } from 'lucide-react';
 import { getExplainability } from '../../api/client';
 
 // Detailed descriptions for each explainability technique
@@ -108,18 +108,20 @@ const Explainability = ({ modelId, onBack }) => {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 p-6">
-        <div className="max-w-7xl mx-auto">
+      <div className="page-container">
+        <div className="content-wrapper">
           <div className="flex items-center justify-between mb-6">
             <div className="flex items-center">
-              <Sparkles className="text-purple-600 mr-3" size={28} />
-              <h1 className="text-2xl font-bold text-gray-800">Model Explainability</h1>
+              <div className="w-10 h-10 bg-gradient-to-br from-primary-500 to-primary-600 rounded-xl flex items-center justify-center mr-3 shadow-lg">
+                <Eye className="text-white" size={20} />
+              </div>
+              <h1 className="text-2xl font-bold text-on-surface">Model Explainability</h1>
             </div>
           </div>
           <div className="flex flex-col justify-center items-center h-64 space-y-4">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-600"></div>
-            <p className="text-gray-600">Generating explainability analysis...</p>
-            <p className="text-sm text-gray-500">This may take a minute for SHAP and LIME calculations</p>
+            <div className="w-12 h-12 border-4 border-primary-500 border-t-transparent rounded-full animate-spin"></div>
+            <p className="text-on-surface-variant font-medium">Generating explainability analysis...</p>
+            <p className="text-sm text-on-surface-variant">This may take a minute for SHAP and LIME calculations</p>
           </div>
         </div>
       </div>
@@ -128,27 +130,29 @@ const Explainability = ({ modelId, onBack }) => {
 
   if (error) {
     return (
-      <div className="min-h-screen bg-gray-50 p-6">
-        <div className="max-w-7xl mx-auto">
+      <div className="page-container">
+        <div className="content-wrapper">
           <div className="flex items-center justify-between mb-6">
             <div className="flex items-center">
-              <Sparkles className="text-purple-600 mr-3" size={28} />
-              <h1 className="text-2xl font-bold text-gray-800">Model Explainability</h1>
+              <div className="w-10 h-10 bg-gradient-to-br from-primary-500 to-primary-600 rounded-xl flex items-center justify-center mr-3 shadow-lg">
+                <Eye className="text-white" size={20} />
+              </div>
+              <h1 className="text-2xl font-bold text-on-surface">Model Explainability</h1>
             </div>
             <button
               onClick={onBack}
-              className="flex items-center px-4 py-2 text-gray-600 hover:text-gray-800 border border-gray-300 rounded hover:bg-gray-50 transition"
+              className="btn-secondary"
             >
-              <ArrowLeft size={18} className="mr-2" />
+              <ArrowLeft size={18} />
               Back to Visualizations
             </button>
           </div>
-          <div className="bg-red-50 border border-red-200 rounded-lg p-6 text-center">
-            <AlertTriangle className="mx-auto text-red-500 mb-4" size={48} />
-            <p className="text-red-700 mb-4">{error}</p>
+          <div className="card p-6 text-center" style={{ background: 'rgba(239, 68, 68, 0.06)', borderColor: 'rgba(239, 68, 68, 0.2)' }}>
+            <AlertTriangle className="mx-auto text-error-400 mb-4" size={48} />
+            <p className="text-error-400 mb-4">{error}</p>
             <button
               onClick={fetchExplainability}
-              className="px-4 py-2 bg-purple-600 text-white rounded hover:bg-purple-700 transition"
+              className="btn-primary"
             >
               Retry
             </button>
@@ -160,23 +164,25 @@ const Explainability = ({ modelId, onBack }) => {
 
   if (!explainability) {
     return (
-      <div className="min-h-screen bg-gray-50 p-6">
-        <div className="max-w-7xl mx-auto">
+      <div className="page-container">
+        <div className="content-wrapper">
           <div className="flex items-center justify-between mb-6">
             <div className="flex items-center">
-              <Sparkles className="text-purple-600 mr-3" size={28} />
-              <h1 className="text-2xl font-bold text-gray-800">Model Explainability</h1>
+              <div className="w-10 h-10 bg-gradient-to-br from-primary-500 to-primary-600 rounded-xl flex items-center justify-center mr-3 shadow-lg">
+                <Eye className="text-white" size={20} />
+              </div>
+              <h1 className="text-2xl font-bold text-on-surface">Model Explainability</h1>
             </div>
             <button
               onClick={onBack}
-              className="flex items-center px-4 py-2 text-gray-600 hover:text-gray-800 border border-gray-300 rounded hover:bg-gray-50 transition"
+              className="btn-secondary"
             >
-              <ArrowLeft size={18} className="mr-2" />
+              <ArrowLeft size={18} />
               Back to Visualizations
             </button>
           </div>
-          <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-6 text-center">
-            <p className="text-yellow-700">No explainability data available for this model.</p>
+          <div className="card p-6 text-center" style={{ background: 'rgba(245, 158, 11, 0.06)', borderColor: 'rgba(245, 158, 11, 0.2)' }}>
+            <p className="text-warning-400">No explainability data available for this model.</p>
           </div>
         </div>
       </div>
@@ -309,22 +315,22 @@ const Explainability = ({ modelId, onBack }) => {
     const plotImage = data.plot || data.importance_plot || null;
     
     return (
-      <div key={key} className="bg-white rounded-xl shadow-md overflow-hidden">
+      <div key={key} className="explain-card overflow-hidden">
         <div 
-          className="flex justify-between items-center p-4 border-b border-gray-100 cursor-pointer hover:bg-gray-50"
+          className="flex justify-between items-center p-5 border-b border-outline-variant cursor-pointer hover:bg-surface-container-low/50 transition-colors"
           onClick={() => toggleSection(key)}
         >
           <div className="flex-1">
             <div className="flex items-center">
-              <h2 className="text-lg font-semibold text-gray-800">{title}</h2>
+              <h2 className="text-lg font-semibold text-on-surface">{title}</h2>
               <HelpCircle 
                 size={16} 
-                className="ml-2 text-gray-400 hover:text-purple-600" 
+                className="ml-2 text-on-surface-variant hover:text-primary-500 transition-colors" 
                 title={desc.interpretation || "Click for more info"}
               />
             </div>
             {desc.description && (
-              <p className="text-sm text-gray-500 mt-1">{desc.description}</p>
+              <p className="text-sm text-on-surface-variant mt-1">{desc.description}</p>
             )}
           </div>
           {plotImage && (
@@ -333,7 +339,7 @@ const Explainability = ({ modelId, onBack }) => {
                 e.stopPropagation();
                 downloadVisualization(plotImage, title);
               }}
-              className="flex items-center px-3 py-2 bg-purple-600 text-white text-sm rounded-lg hover:bg-purple-700 transition shadow-sm ml-4"
+              className="btn-primary flex items-center text-sm ml-4"
             >
               <Download size={14} className="mr-1" />
               Download
@@ -343,11 +349,11 @@ const Explainability = ({ modelId, onBack }) => {
         
         {/* Interpretation box - always visible */}
         {desc.interpretation && (
-          <div className="px-4 py-3 bg-purple-50 border-b border-purple-100">
+          <div className="px-5 py-3 border-b rounded-t" style={{ background: 'rgba(77, 142, 255, 0.06)', borderColor: 'rgba(77, 142, 255, 0.1)' }}>
             <div className="flex items-start">
-              <Info size={16} className="text-purple-600 mr-2 mt-0.5 flex-shrink-0" />
-              <p className="text-sm text-purple-800">
-                <strong>How to interpret:</strong> {desc.interpretation}
+              <Info size={16} className="text-primary-500 mr-2 mt-0.5 flex-shrink-0" />
+              <p className="text-sm text-on-surface-variant">
+                <strong className="text-primary-500">How to interpret:</strong> {desc.interpretation}
               </p>
             </div>
           </div>
@@ -355,13 +361,13 @@ const Explainability = ({ modelId, onBack }) => {
         
         {/* Additional info for LIME */}
         {data.prediction !== undefined && (
-          <div className="px-4 py-2 bg-blue-50 border-b border-blue-100 flex space-x-6">
+          <div className="px-5 py-2 bg-surface-container-low border-b border-outline-variant flex space-x-6">
             <span className="text-sm">
-              <strong className="text-blue-700">Predicted:</strong> {data.prediction}
+              <strong className="text-primary-500">Predicted:</strong> <span className="text-on-surface-variant">{data.prediction}</span>
             </span>
             {data.actual !== undefined && (
               <span className="text-sm">
-                <strong className="text-blue-700">Actual:</strong> {data.actual}
+                <strong className="text-primary-500">Actual:</strong> <span className="text-on-surface-variant">{data.actual}</span>
               </span>
             )}
           </div>
@@ -369,22 +375,22 @@ const Explainability = ({ modelId, onBack }) => {
         
         {/* Fidelity for surrogate tree */}
         {data.fidelity !== undefined && (
-          <div className="px-4 py-2 bg-green-50 border-b border-green-100">
+          <div className="px-5 py-2 border-b" style={{ background: 'rgba(16, 185, 129, 0.06)', borderColor: 'rgba(16, 185, 129, 0.15)' }}>
             <span className="text-sm">
-              <strong className="text-green-700">Fidelity Score:</strong> {(data.fidelity * 100).toFixed(1)}% 
-              <span className="text-gray-500 ml-2">(how well this tree mimics the original model)</span>
+              <strong className="text-success-500">Fidelity Score:</strong> <span className="text-on-surface-variant">{(data.fidelity * 100).toFixed(1)}%</span>
+              <span className="text-on-surface-variant ml-2">(how well this tree mimics the original model)</span>
             </span>
           </div>
         )}
         
         {/* High correlations warning */}
         {data.high_correlations && data.high_correlations.length > 0 && (
-          <div className="px-4 py-2 bg-yellow-50 border-b border-yellow-100">
+          <div className="px-5 py-2 border-b" style={{ background: 'rgba(245, 158, 11, 0.06)', borderColor: 'rgba(245, 158, 11, 0.15)' }}>
             <div className="flex items-start">
-              <AlertTriangle size={16} className="text-yellow-600 mr-2 mt-0.5" />
-              <div className="text-sm text-yellow-800">
-                <strong>High Correlations Detected:</strong>
-                <ul className="list-disc ml-4 mt-1">
+              <AlertTriangle size={16} className="text-warning-500 mr-2 mt-0.5" />
+              <div className="text-sm">
+                <strong className="text-warning-500">High Correlations Detected:</strong>
+                <ul className="list-disc ml-4 mt-1 text-on-surface-variant">
                   {data.high_correlations.slice(0, 3).map((corr, idx) => (
                     <li key={idx}>{corr.feature1} ↔ {corr.feature2}: {corr.correlation.toFixed(2)}</li>
                   ))}
@@ -396,23 +402,23 @@ const Explainability = ({ modelId, onBack }) => {
         
         {/* Per-class metrics for confusion analysis */}
         {data.per_class_metrics && (
-          <div className="px-4 py-3 bg-gray-50 border-b border-gray-100 overflow-x-auto">
+          <div className="px-4 py-3 bg-surface-container-low border-b border-outline-variant overflow-x-auto">
             <div className="flex items-center justify-between mb-2">
-              <h4 className="text-sm font-semibold text-gray-700">Per-Class Metrics (Top Classes):</h4>
+              <h4 className="text-sm font-semibold text-on-surface-variant">Per-Class Metrics (Top Classes):</h4>
               {data.total_classes && data.shown_classes && data.total_classes > data.shown_classes && (
-                <span className="text-xs text-gray-500">
+                <span className="text-xs text-on-surface-variant">
                   Showing {data.shown_classes} of {data.total_classes} classes
                 </span>
               )}
             </div>
             <table className="min-w-full text-sm">
               <thead>
-                <tr className="text-left text-gray-600 bg-gray-100">
-                  <th className="px-3 py-2 rounded-tl">Class</th>
+                <tr className="text-left text-on-surface-variant bg-surface-container-high uppercase text-xs">
+                  <th className="px-3 py-2 rounded-tl-lg">Class</th>
                   <th className="px-3 py-2">Precision</th>
                   <th className="px-3 py-2">Recall</th>
                   <th className="px-3 py-2">F1 Score</th>
-                  <th className="px-3 py-2 rounded-tr">Support</th>
+                  <th className="px-3 py-2 rounded-tr-lg">Support</th>
                 </tr>
               </thead>
               <tbody>
@@ -424,12 +430,12 @@ const Explainability = ({ modelId, onBack }) => {
                   };
                   
                   return (
-                    <tr key={cls} className={idx % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
-                      <td className="px-3 py-2 font-medium text-gray-800">{cls}</td>
-                      <td className="px-3 py-2">{formatMetric(metrics.precision)}</td>
-                      <td className="px-3 py-2">{formatMetric(metrics.recall)}</td>
-                      <td className="px-3 py-2">{formatMetric(metrics.f1)}</td>
-                      <td className="px-3 py-2 text-gray-600">{metrics.support}</td>
+                    <tr key={cls} className={idx % 2 === 0 ? 'bg-surface-container' : 'bg-surface-container-low'}>
+                      <td className="px-3 py-2 font-medium text-on-surface-variant">{cls}</td>
+                      <td className="px-3 py-2 text-on-surface-variant">{formatMetric(metrics.precision)}</td>
+                      <td className="px-3 py-2 text-on-surface-variant">{formatMetric(metrics.recall)}</td>
+                      <td className="px-3 py-2 text-on-surface-variant">{formatMetric(metrics.f1)}</td>
+                      <td className="px-3 py-2 text-on-surface-variant">{metrics.support}</td>
                     </tr>
                   );
                 })}
@@ -440,11 +446,11 @@ const Explainability = ({ modelId, onBack }) => {
         
         {/* Plot image */}
         {plotImage && (
-          <div className="p-6 flex justify-center bg-gray-50">
+          <div className="p-6 flex justify-center bg-surface-container-low">
             <img 
               src={`data:image/png;base64,${plotImage}`} 
               alt={title} 
-              className="max-w-full h-auto rounded-lg shadow-sm"
+              className="max-w-full h-auto rounded-xl shadow-soft"
             />
           </div>
         )}
@@ -459,13 +465,13 @@ const Explainability = ({ modelId, onBack }) => {
       <div className="mb-8">
         <div className="flex items-center mb-4">
           {icon}
-          <h2 className="text-xl font-bold text-gray-800 ml-2">{title}</h2>
-          <span className="ml-2 px-2 py-1 bg-purple-100 text-purple-700 text-xs rounded-full">
+          <h2 className="text-xl font-bold text-on-surface ml-2">{title}</h2>
+          <span className="ml-2 badge badge-primary">
             {items.length} {items.length === 1 ? 'analysis' : 'analyses'}
           </span>
         </div>
         {description && (
-          <p className="text-gray-600 mb-4 ml-8">{description}</p>
+          <p className="text-on-surface-variant mb-4 ml-8">{description}</p>
         )}
         <div className="space-y-4">
           {items.map(item => renderExplanationCard(item))}
@@ -475,73 +481,75 @@ const Explainability = ({ modelId, onBack }) => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 p-6">
-      <div className="max-w-7xl mx-auto">
+    <div className="page-container">
+      <div className="content-wrapper">
         {/* Header */}
         <div className="flex items-center justify-between mb-6">
           <div>
             <div className="flex items-center">
-              <Sparkles className="text-purple-600 mr-3" size={28} />
-              <h1 className="text-2xl font-bold text-gray-800">Model Explainability</h1>
+              <div className="w-10 h-10 bg-gradient-to-br from-primary-500 to-primary-600 rounded-xl flex items-center justify-center mr-3 shadow-lg">
+                <Eye className="text-white" size={20} />
+              </div>
+              <h1 className="text-2xl font-bold text-on-surface">Model Explainability</h1>
             </div>
-            <p className="text-gray-600 ml-10">Deep-dive analysis into how your model makes predictions</p>
+            <p className="text-on-surface-variant ml-13 mt-1">Deep-dive analysis into how your model makes predictions</p>
           </div>
           <div className="flex items-center space-x-3">
             <button
               onClick={() => navigate(`/deploy/${modelId}`)}
-              className="flex items-center px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 transition shadow-md"
+              className="btn-success"
             >
-              <Rocket size={18} className="mr-2" />
+              <Rocket size={18} />
               Deploy Model
             </button>
             <button
               onClick={onBack}
-              className="flex items-center px-4 py-2 text-gray-600 hover:text-gray-800 border border-gray-300 rounded hover:bg-gray-50 transition"
+              className="btn-secondary"
             >
-              <ArrowLeft size={18} className="mr-2" />
+              <ArrowLeft size={18} />
               Back to Visualizations
             </button>
           </div>
         </div>
 
         {/* Model Info Banner */}
-        <div className="bg-gradient-to-r from-purple-600 to-indigo-700 rounded-xl shadow-lg p-6 mb-6 text-white">
+        <div className="card p-6 mb-6" style={{ background: 'rgba(77, 142, 255, 0.06)', borderColor: 'rgba(77, 142, 255, 0.15)' }}>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div className="flex items-center">
-              <Layers size={20} className="mr-2 opacity-80" />
+              <Layers size={20} className="text-primary-500 mr-2" />
               <div>
-                <p className="text-sm opacity-80">Model</p>
-                <p className="font-bold text-lg">{modelName}</p>
+                <p className="text-sm text-on-surface-variant">Model</p>
+                <p className="font-bold text-lg text-on-surface">{modelName}</p>
               </div>
             </div>
             <div className="flex items-center">
-              <Target size={20} className="mr-2 opacity-80" />
+              <Target size={20} className="text-success-500 mr-2" />
               <div>
-                <p className="text-sm opacity-80">Target</p>
-                <p className="font-bold text-lg">{targetColumn}</p>
+                <p className="text-sm text-on-surface-variant">Target</p>
+                <p className="font-bold text-lg text-on-surface">{targetColumn}</p>
               </div>
             </div>
             <div className="flex items-center">
-              <BarChart3 size={20} className="mr-2 opacity-80" />
+              <BarChart3 size={20} className="text-warning-500 mr-2" />
               <div>
-                <p className="text-sm opacity-80">Type</p>
-                <p className="font-bold text-lg">{isClassification ? 'Classification' : 'Regression'}</p>
+                <p className="text-sm text-on-surface-variant">Type</p>
+                <p className="font-bold text-lg text-on-surface">{isClassification ? 'Classification' : 'Regression'}</p>
               </div>
             </div>
           </div>
         </div>
 
         {/* Guide Card */}
-        <div className="bg-white rounded-xl shadow-md p-6 mb-8 border-l-4 border-purple-500">
+        <div className="card p-6 mb-8 border-l-4 border-primary-500">
           <div className="flex items-start">
-            <Info size={24} className="text-purple-600 mr-3 flex-shrink-0 mt-0.5" />
+            <Info size={24} className="text-primary-500 mr-3 flex-shrink-0 mt-0.5" />
             <div>
-              <h3 className="font-bold text-gray-800 mb-2">Understanding This Page</h3>
-              <p className="text-gray-600 text-sm">
+              <h3 className="font-bold text-on-surface mb-2">Understanding This Page</h3>
+              <p className="text-on-surface-variant text-sm">
                 This page provides multiple perspectives on how your model makes decisions. 
-                <strong> Global explanations</strong> (SHAP, Permutation Importance) show overall feature importance.
-                <strong> Local explanations</strong> (LIME) show why specific predictions were made.
-                <strong> Data analysis</strong> helps you understand your training data.
+                <strong className="text-primary-500"> Global explanations</strong> (SHAP, Permutation Importance) show overall feature importance.
+                <strong className="text-success-500"> Local explanations</strong> (LIME) show why specific predictions were made.
+                <strong className="text-warning-500"> Data analysis</strong> helps you understand your training data.
                 Each chart includes an interpretation guide to help you understand the insights.
               </p>
             </div>
@@ -551,7 +559,7 @@ const Explainability = ({ modelId, onBack }) => {
         {/* Global Explanations */}
         {renderSection(
           "Global Feature Importance",
-          <Zap className="text-yellow-500" size={24} />,
+          <Zap className="text-warning-500" size={24} />,
           globalExplanations,
           "These explanations show which features are most important across all predictions."
         )}
@@ -559,7 +567,7 @@ const Explainability = ({ modelId, onBack }) => {
         {/* Local Explanations */}
         {renderSection(
           "Local Explanations (Individual Predictions)",
-          <Target className="text-green-500" size={24} />,
+          <Target className="text-success-500" size={24} />,
           localExplanations,
           "These explain specific predictions to help you understand individual model decisions."
         )}
@@ -567,7 +575,7 @@ const Explainability = ({ modelId, onBack }) => {
         {/* Performance Analysis */}
         {renderSection(
           "Performance Analysis",
-          <CheckCircle className="text-blue-500" size={24} />,
+          <CheckCircle className="text-primary-500" size={24} />,
           performanceAnalysis,
           "Detailed metrics and calibration analysis for model performance."
         )}
@@ -575,7 +583,7 @@ const Explainability = ({ modelId, onBack }) => {
         {/* Data Analysis */}
         {renderSection(
           "Data Analysis",
-          <BarChart3 className="text-orange-500" size={24} />,
+          <BarChart3 className="text-on-surface-variant" size={24} />,
           dataAnalysis,
           "Understand the characteristics of your training data."
         )}
@@ -583,15 +591,15 @@ const Explainability = ({ modelId, onBack }) => {
         {/* No explanations available */}
         {globalExplanations.length === 0 && localExplanations.length === 0 && 
          performanceAnalysis.length === 0 && dataAnalysis.length === 0 && (
-          <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-6 text-center">
-            <AlertTriangle className="mx-auto text-yellow-500 mb-4" size={48} />
-            <p className="text-yellow-700">No explainability analyses could be generated for this model.</p>
-            <p className="text-yellow-600 text-sm mt-2">This may be due to missing data or unsupported model type.</p>
+          <div className="card p-6 text-center" style={{ background: 'rgba(245, 158, 11, 0.06)', borderColor: 'rgba(245, 158, 11, 0.15)' }}>
+            <AlertTriangle className="mx-auto text-warning-400 mb-4" size={48} />
+            <p className="text-warning-400">No explainability analyses could be generated for this model.</p>
+            <p className="text-on-surface-variant text-sm mt-2">This may be due to missing data or unsupported model type.</p>
           </div>
         )}
 
         {/* Deploy Model CTA */}
-        <div className="bg-gradient-to-r from-green-600 to-emerald-700 rounded-xl shadow-lg p-6 mt-8">
+        <div className="card bg-gradient-to-r from-success-500 to-success-600 p-6 mt-8">
           <div className="flex items-center justify-between">
             <div className="text-white">
               <h2 className="text-xl font-bold mb-1">Ready to Deploy?</h2>
@@ -601,9 +609,9 @@ const Explainability = ({ modelId, onBack }) => {
             </div>
             <button
               onClick={() => navigate(`/deploy/${modelId}`)}
-              className="flex items-center px-6 py-3 bg-white text-green-700 rounded-lg font-semibold hover:bg-green-50 transition shadow-md"
+              className="flex items-center gap-2 px-6 py-3 bg-surface-container text-success-500 font-semibold rounded-xl hover:bg-surface-container-high transition shadow-md"
             >
-              <Rocket size={18} className="mr-2" />
+              <Rocket size={18} />
               Deploy Model
             </button>
           </div>

@@ -1,0 +1,178 @@
+{
+  "model_name": "XGBoostClassifier",
+  "model_type": "classification",
+  "target_column": "Category",
+  "target_classes": [
+    "Beverages",
+    "Butchers",
+    "Computers and electric accessories",
+    "Electric household essentials",
+    "Food",
+    "Furniture",
+    "Milk Products",
+    "Patisserie"
+  ],
+  "n_features": 14,
+  "n_samples_trained": 12575,
+  "feature_order": [
+    "Transaction ID",
+    "Customer ID",
+    "Item",
+    "Price Per Unit",
+    "Quantity",
+    "Total Spent",
+    "Transaction Date",
+    "Payment Method_Cash",
+    "Payment Method_Credit Card",
+    "Payment Method_Digital Wallet",
+    "Location_In-store",
+    "Location_Online",
+    "Discount Applied_False",
+    "Discount Applied_True"
+  ],
+  "features": [
+    {
+      "name": "Transaction ID",
+      "dtype": "int64",
+      "is_numeric": true,
+      "n_unique": 12575,
+      "min": 0.0,
+      "max": 12574.0,
+      "mean": 6287.0
+    },
+    {
+      "name": "Customer ID",
+      "dtype": "int64",
+      "is_numeric": true,
+      "n_unique": 25,
+      "min": 0.0,
+      "max": 24.0,
+      "mean": 12.043578528827037
+    },
+    {
+      "name": "Item",
+      "dtype": "int64",
+      "is_numeric": true,
+      "n_unique": 200,
+      "min": 0.0,
+      "max": 199.0,
+      "mean": 101.4551888667992
+    },
+    {
+      "name": "Price Per Unit",
+      "dtype": "float64",
+      "is_numeric": true,
+      "n_unique": 26,
+      "min": -1.7525224116804916,
+      "max": 1.682689936034358,
+      "mean": -5.085395325519604e-18
+    },
+    {
+      "name": "Quantity",
+      "dtype": "float64",
+      "is_numeric": true,
+      "n_unique": 11,
+      "min": -1.6269413193002702,
+      "max": 1.600846744415627,
+      "mean": -2.633104690769039e-16
+    },
+    {
+      "name": "Total Spent",
+      "dtype": "float64",
+      "is_numeric": true,
+      "n_unique": 228,
+      "min": -1.348421817988575,
+      "max": 3.032641527513817,
+      "mean": -4.068316260415683e-17
+    },
+    {
+      "name": "Transaction Date",
+      "dtype": "int64",
+      "is_numeric": true,
+      "n_unique": 1114,
+      "min": 0.0,
+      "max": 1113.0,
+      "mean": 557.8497813121272
+    },
+    {
+      "name": "Payment Method_Cash",
+      "dtype": "bool",
+      "is_numeric": false,
+      "n_unique": 2,
+      "categories": [
+        false,
+        true
+      ]
+    },
+    {
+      "name": "Payment Method_Credit Card",
+      "dtype": "bool",
+      "is_numeric": false,
+      "n_unique": 2,
+      "categories": [
+        false,
+        true
+      ]
+    },
+    {
+      "name": "Payment Method_Digital Wallet",
+      "dtype": "bool",
+      "is_numeric": false,
+      "n_unique": 2,
+      "categories": [
+        true,
+        false
+      ]
+    },
+    {
+      "name": "Location_In-store",
+      "dtype": "bool",
+      "is_numeric": false,
+      "n_unique": 2,
+      "categories": [
+        false,
+        true
+      ]
+    },
+    {
+      "name": "Location_Online",
+      "dtype": "bool",
+      "is_numeric": false,
+      "n_unique": 2,
+      "categories": [
+        true,
+        false
+      ]
+    },
+    {
+      "name": "Discount Applied_False",
+      "dtype": "bool",
+      "is_numeric": false,
+      "n_unique": 2,
+      "categories": [
+        false,
+        true
+      ]
+    },
+    {
+      "name": "Discount Applied_True",
+      "dtype": "bool",
+      "is_numeric": false,
+      "n_unique": 2,
+      "categories": [
+        true,
+        false
+      ]
+    }
+  ],
+  "metrics": {
+    "accuracy": 0.9208747514910537,
+    "precision": 0.9217843828424128,
+    "recall": 0.9208747514910537,
+    "f1_score": 0.9210920365356694,
+    "problem_type": "classification"
+  },
+  "created_at": "2026-04-23T11:35:04.670160",
+  "version": "1.0.0",
+  "api_version": "v1"
+}

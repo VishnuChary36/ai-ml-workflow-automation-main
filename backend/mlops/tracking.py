@@ -87,9 +87,9 @@ class MLflowTracker:
                 )
             
             self._initialized = True
-            print(f"✓ MLflow initialized: {self.tracking_uri}")
+            print(f"[OK] MLflow initialized: {self.tracking_uri}")
         except Exception as e:
-            print(f"⚠ MLflow initialization failed: {e}")
+            print(f"[WARN] MLflow initialization failed: {e}")
             self._initialized = False
     
     @property

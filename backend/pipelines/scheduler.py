@@ -152,7 +152,7 @@ class PipelineScheduler:
         self.jobs[job_id] = job
         self._save_schedules()
         
-        print(f"✓ Created schedule: {name} ({schedule})")
+        print(f"[OK] Created schedule: {name} ({schedule})")
         return job
     
     def _calculate_next_run(self, schedule: str) -> datetime:
@@ -365,14 +365,14 @@ class PipelineScheduler:
             daemon=True
         )
         self._scheduler_thread.start()
-        print("✓ Pipeline scheduler started")
+        print("[OK] Pipeline scheduler started")
     
     def stop(self):
         """Stop the background scheduler."""
         self._running = False
         if self._scheduler_thread:
             self._scheduler_thread.join(timeout=5)
-        print("✓ Pipeline scheduler stopped")
+        print("[OK] Pipeline scheduler stopped")
     
     def _scheduler_loop(self):
         """Background scheduler loop."""

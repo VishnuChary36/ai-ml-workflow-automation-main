@@ -1,25 +1,60 @@
-FROM python:3.10-slim
+# Stage 1: Builder with dependencies
+FROM python:3.10-slim AS builder
 
 WORKDIR /app
 
-# Install system dependencies
-RUN apt-get update && apt-get install -y \
+# Install system dependencies for building
+RUN apt-get update && apt-get install -y --no-install-recommends \
     gcc \
     g++ \
-    postgresql-client \
     && rm -rf /var/lib/apt/lists/*
 
-# Copy requirements
+# Create virtual environment
+RUN python -m venv /opt/venv
+ENV PATH="/opt/venv/bin:$PATH"
+
+# Copy requirements first for better layer caching
 COPY backend/requirements.txt .
 
-# Install Python dependencies
-RUN pip install --no-cache-dir -r requirements.txt
+# Install Python dependencies with optimizations
+RUN pip install --no-cache-dir --upgrade pip wheel setuptools && \
+    pip install --no-cache-dir -r requirements.txt
 
-# Copy application
-COPY backend/ .
+# Stage 2: Runtime (smaller final image)
+FROM python:3.10-slim AS runtime
 
-# Create directories
-RUN mkdir -p /app/artifacts /app/models /app/uploads /app/logs
+WORKDIR /app
+
+# Install only runtime system dependencies
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    postgresql-client \
+    && rm -rf /var/lib/apt/lists/* \
+    && apt-get clean
+
+# Copy virtual environment from builder
+COPY --from=builder /opt/venv /opt/venv
+ENV PATH="/opt/venv/bin:$PATH"
+
+# Copy only necessary application files (excluding large data dirs)
+COPY backend/*.py ./
+COPY backend/core/ ./core/
+COPY backend/schemas/ ./schemas/
+COPY backend/services/ ./services/
+COPY backend/tasks/ ./tasks/
+COPY backend/alerts/ ./alerts/
+COPY backend/monitoring/ ./monitoring/
+COPY backend/pipelines/ ./pipelines/
+COPY backend/mlops/ ./mlops/
+COPY backend/security/ ./security/
+COPY backend/inference/ ./inference/
+COPY backend/experiments/ ./experiments/
+COPY backend/feature_store/ ./feature_store/
+COPY backend/model_registry/ ./model_registry/
+COPY backend/cicd/ ./cicd/
+COPY backend/schedules/ ./schedules/
+
+# Create directories for mounted volumes (data dirs)
+RUN mkdir -p /app/artifacts /app/models /app/uploads /app/logs /app/deployments /app/audit_logs
 
 # Expose port
 EXPOSE 8000

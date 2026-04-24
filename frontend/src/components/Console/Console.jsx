@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react';
-import { Download, Copy, XCircle, Play } from 'lucide-react';
+import { Download, Copy, Play, Terminal, CheckCircle, Circle } from 'lucide-react';
 import LogWebSocket from '../../api/websocket';
 import { downloadLogsText } from '../../api/client';
 
@@ -81,7 +81,7 @@ const Console = ({ taskId, autoConnect = true, showPreview = false, previewLogs 
       addLog,
       (err) => {
         if (isMountedRef.current) {
-          setError('WebSocket error. Trying to reconnect...');
+          setError('Connection interrupted. Attempting to reconnect...');
           setIsConnected(false);
         }
       },
@@ -98,37 +98,58 @@ const Console = ({ taskId, autoConnect = true, showPreview = false, previewLogs 
   };
 
   const formatLogLine = (log) => {
-    const timestamp = log.timestamp ? new Date(log.timestamp).toISOString().replace('T', ' ').substring(0, 19) : '';
+    const timestamp = log.timestamp ? new Date(log.timestamp).toISOString().replace('T', ' ').substring(11, 19) : '';
     const level = log.level || 'INFO';
     const source = log.source || '';
     const message = log.message || '';
 
-    return `${level} ${timestamp}Z | ${source} | ${message}`;
+    return { timestamp, level, source, message };
   };
 
   const getLevelColor = (level) => {
     switch (level?.toUpperCase()) {
       case 'ERROR':
-        return 'text-red-400';
+        return 'text-error-400';
       case 'WARN':
-        return 'text-yellow-400';
+        return 'text-warning-400';
       case 'INFO':
-        return 'text-blue-400';
+        return 'text-primary-400';
       case 'DEBUG':
-        return 'text-gray-400';
+        return 'text-on-surface-variant';
       default:
-        return 'text-gray-300';
+        return 'text-on-surface-variant';
+    }
+  };
+
+  const getLevelBadgeColor = (level) => {
+    switch (level?.toUpperCase()) {
+      case 'ERROR':
+        return 'bg-error-500/20 text-error-400';
+      case 'WARN':
+        return 'bg-warning-500/20 text-warning-400';
+      case 'INFO':
+        return 'bg-primary-500/20 text-primary-400';
+      case 'DEBUG':
+        return 'bg-surface-container-high/20 text-on-surface-variant';
+      default:
+        return 'bg-surface-container-high/20 text-on-surface-variant';
     }
   };
 
   const handleCopyLogs = () => {
-    const logsText = logs.map(formatLogLine).join('\n');
+    const logsText = logs.map(log => {
+      const { timestamp, level, source, message } = formatLogLine(log);
+      return `[${timestamp}] ${level} | ${source} | ${message}`;
+    }).join('\n');
     navigator.clipboard.writeText(logsText);
   };
 
   const handleDownloadLogs = async () => {
     if (showPreview) {
-      const logsText = logs.map(formatLogLine).join('\n');
+      const logsText = logs.map(log => {
+        const { timestamp, level, source, message } = formatLogLine(log);
+        return `[${timestamp}] ${level} | ${source} | ${message}`;
+      }).join('\n');
       const blob = new Blob([logsText], { type: 'text/plain' });
       const url = window.URL.createObjectURL(blob);
       const link = document.createElement('a');
@@ -143,42 +164,47 @@ const Console = ({ taskId, autoConnect = true, showPreview = false, previewLogs 
   };
 
   return (
-    <div className="bg-gray-900 rounded-lg overflow-hidden border border-gray-700">
+    <div className="console-container overflow-hidden">
       {/* Header */}
-      <div className="bg-gray-800 px-4 py-2 flex items-center justify-between border-b border-gray-700">
-        <div className="flex items-center space-x-3">
-          <div className="text-sm font-mono text-gray-300">
-            {showPreview ? 'Preview Console' : 'Live Console'}
+      <div className="console-header">
+        <div className="flex items-center space-x-4">
+          <div className="flex items-center space-x-2">
+            <Terminal size={18} className="text-on-surface-variant" />
+            <span className="text-sm font-medium text-on-surface-variant">
+              {showPreview ? 'Preview Console' : 'Execution Logs'}
+            </span>
           </div>
           {!showPreview && (
             <div className="flex items-center space-x-2">
               {isConnected ? (
-                <>
-                  <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
-                  <span className="text-xs text-green-400">Connected</span>
-                </>
+                <div className="flex items-center space-x-1.5 px-2 py-1 bg-success-500/10 rounded-md">
+                  <div className="w-1.5 h-1.5 bg-success-500 rounded-full animate-pulse-subtle"></div>
+                  <span className="text-xs font-medium text-success-400">Connected</span>
+                </div>
               ) : (
-                <>
-                  <div className="w-2 h-2 bg-red-500 rounded-full"></div>
-                  <span className="text-xs text-red-400">Disconnected</span>
-                </>
+                <div className="flex items-center space-x-1.5 px-2 py-1 bg-surface-container-highest rounded-md">
+                  <div className="w-1.5 h-1.5 bg-surface-container-low0 rounded-full"></div>
+                  <span className="text-xs font-medium text-on-surface-variant">Disconnected</span>
+                </div>
               )}
             </div>
           )}
-          {error && <span className="text-xs text-yellow-400">{error}</span>}
+          {error && (
+            <span className="text-xs text-warning-400 font-medium">{error}</span>
+          )}
         </div>
         
-        <div className="flex items-center space-x-2">
+        <div className="flex items-center space-x-1">
           <button
             onClick={handleCopyLogs}
-            className="p-1.5 hover:bg-gray-700 rounded text-gray-400 hover:text-gray-200 transition"
+            className="p-2 hover:bg-surface-container-highest rounded-lg text-on-surface-variant hover:text-on-surface transition-colors"
             title="Copy logs"
           >
             <Copy size={16} />
           </button>
           <button
             onClick={handleDownloadLogs}
-            className="p-1.5 hover:bg-gray-700 rounded text-gray-400 hover:text-gray-200 transition"
+            className="p-2 hover:bg-surface-container-highest rounded-lg text-on-surface-variant hover:text-on-surface transition-colors"
             title="Download logs"
           >
             <Download size={16} />
@@ -186,7 +212,7 @@ const Console = ({ taskId, autoConnect = true, showPreview = false, previewLogs 
           {!showPreview && !isConnected && (
             <button
               onClick={connectWebSocket}
-              className="p-1.5 hover:bg-gray-700 rounded text-gray-400 hover:text-gray-200 transition"
+              className="p-2 hover:bg-surface-container-highest rounded-lg text-on-surface-variant hover:text-on-surface transition-colors"
               title="Reconnect"
             >
               <Play size={16} />
@@ -198,18 +224,42 @@ const Console = ({ taskId, autoConnect = true, showPreview = false, previewLogs 
       {/* Console Content */}
       <div
         ref={consoleRef}
-        className="bg-gray-950 p-4 h-96 overflow-y-auto font-mono text-sm"
+        className="console-content bg-surface-container-lowest"
       >
         {logs.length === 0 ? (
-          <div className="text-gray-500 text-center py-8">
-            {showPreview ? 'No preview available' : 'Waiting for logs...'}
+          <div className="flex flex-col items-center justify-center py-12 text-on-surface-variant">
+            <Terminal size={32} className="mb-3 opacity-50" />
+            <p className="text-sm">
+              {showPreview ? 'No preview available' : 'Waiting for logs...'}
+            </p>
           </div>
         ) : (
-          logs.map((log, index) => (
-            <div key={index} className={`${getLevelColor(log.level)} py-0.5`}>
-              {formatLogLine(log)}
-            </div>
-          ))
+          <div className="space-y-1">
+            {logs.map((log, index) => {
+              const { timestamp, level, source, message } = formatLogLine(log);
+              return (
+                <div 
+                  key={index} 
+                  className="flex items-start space-x-3 py-1 px-2 rounded hover:bg-surface-container-high/50 transition-colors group"
+                >
+                  <span className="text-on-surface-variant text-xs font-mono flex-shrink-0 pt-0.5">
+                    {timestamp}
+                  </span>
+                  <span className={`text-xs font-medium px-1.5 py-0.5 rounded flex-shrink-0 ${getLevelBadgeColor(level)}`}>
+                    {level}
+                  </span>
+                  {source && (
+                    <span className="text-on-surface-variant text-xs flex-shrink-0 pt-0.5">
+                      {source}
+                    </span>
+                  )}
+                  <span className={`${getLevelColor(level)} text-sm flex-1`}>
+                    {message}
+                  </span>
+                </div>
+              );
+            })}
+          </div>
         )}
       </div>
     </div>

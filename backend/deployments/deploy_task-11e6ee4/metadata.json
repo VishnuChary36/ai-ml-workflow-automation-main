@@ -1,0 +1,151 @@
+{
+  "model_name": "XGBoostClassifier",
+  "model_type": "classification",
+  "target_column": "Payment Method",
+  "target_classes": [
+    "Cash",
+    "Credit Card",
+    "Digital Wallet"
+  ],
+  "n_features": 12,
+  "n_samples_trained": 17534,
+  "feature_order": [
+    "Order ID",
+    "Customer ID",
+    "Item",
+    "Price",
+    "Quantity",
+    "Order Total",
+    "Order Date",
+    "Category_Desserts",
+    "Category_Drinks",
+    "Category_Main Dishes",
+    "Category_Side Dishes",
+    "Category_Starters"
+  ],
+  "features": [
+    {
+      "name": "Order ID",
+      "dtype": "int64",
+      "is_numeric": true,
+      "n_unique": 17534,
+      "min": 0.0,
+      "max": 17533.0,
+      "mean": 8766.5
+    },
+    {
+      "name": "Customer ID",
+      "dtype": "int64",
+      "is_numeric": true,
+      "n_unique": 100,
+      "min": 0.0,
+      "max": 99.0,
+      "mean": 49.77905783050074
+    },
+    {
+      "name": "Item",
+      "dtype": "int64",
+      "is_numeric": true,
+      "n_unique": 26,
+      "min": 0.0,
+      "max": 25.0,
+      "mean": 13.37259039580244
+    },
+    {
+      "name": "Price",
+      "dtype": "float64",
+      "is_numeric": true,
+      "n_unique": 15,
+      "min": -1.1855041826917303,
+      "max": 2.8465884576286973,
+      "mean": 2.35037519528264e-17
+    },
+    {
+      "name": "Quantity",
+      "dtype": "float64",
+      "is_numeric": true,
+      "n_unique": 6,
+      "min": -1.441660506028683,
+      "max": 1.4214061174969594,
+      "mean": 1.3919894475510118e-16
+    },
+    {
+      "name": "Order Total",
+      "dtype": "float64",
+      "is_numeric": true,
+      "n_unique": 42,
+      "min": -1.0223561114321804,
+      "max": 4.328739017715956,
+      "mean": 9.057049243890863e-17
+    },
+    {
+      "name": "Order Date",
+      "dtype": "int64",
+      "is_numeric": true,
+      "n_unique": 730,
+      "min": 0.0,
+      "max": 729.0,
+      "mean": 361.6383027261321
+    },
+    {
+      "name": "Category_Desserts",
+      "dtype": "bool",
+      "is_numeric": false,
+      "n_unique": 2,
+      "categories": [
+        false,
+        true
+      ]
+    },
+    {
+      "name": "Category_Drinks",
+      "dtype": "bool",
+      "is_numeric": false,
+      "n_unique": 2,
+      "categories": [
+        false,
+        true
+      ]
+    },
+    {
+      "name": "Category_Main Dishes",
+      "dtype": "bool",
+      "is_numeric": false,
+      "n_unique": 2,
+      "categories": [
+        false,
+        true
+      ]
+    },
+    {
+      "name": "Category_Side Dishes",
+      "dtype": "bool",
+      "is_numeric": false,
+      "n_unique": 2,
+      "categories": [
+        true,
+        false
+      ]
+    },
+    {
+      "name": "Category_Starters",
+      "dtype": "bool",
+      "is_numeric": false,
+      "n_unique": 2,
+      "categories": [
+        false,
+        true
+      ]
+    }
+  ],
+  "metrics": {
+    "accuracy": 0.34702024522383806,
+    "precision": 0.34265447676966765,
+    "recall": 0.34702024522383806,
+    "f1_score": 0.34163572101868694,
+    "problem_type": "classification"
+  },
+  "created_at": "2026-02-12T08:26:59.764021",
+  "version": "1.0.0",
+  "api_version": "v1"
+}

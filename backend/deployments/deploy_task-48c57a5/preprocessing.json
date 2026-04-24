@@ -1,0 +1,41 @@
+{
+  "numeric_columns": [
+    "Order ID",
+    "Customer ID",
+    "Item",
+    "Price",
+    "Quantity",
+    "Order Total",
+    "Order Date"
+  ],
+  "categorical_columns": [],
+  "encoder_classes": {},
+  "fill_values": {
+    "Order ID": 8766.5,
+    "Customer ID": 50.0,
+    "Item": 14.0,
+    "Price": -0.3366425742032192,
+    "Quantity": -0.0101271942658617,
+    "Order Total": -0.2656355881183025,
+    "Order Date": 358.0
+  },
+  "target_classes": [
+    "Cash",
+    "Credit Card",
+    "Digital Wallet"
+  ],
+  "feature_order": [
+    "Order ID",
+    "Customer ID",
+    "Item",
+    "Price",
+    "Quantity",
+    "Order Total",
+    "Order Date",
+    "Category_Desserts",
+    "Category_Drinks",
+    "Category_Main Dishes",
+    "Category_Side Dishes",
+    "Category_Starters"
+  ]
+}

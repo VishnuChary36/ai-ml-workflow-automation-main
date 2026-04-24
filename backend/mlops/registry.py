@@ -218,7 +218,7 @@ class ModelRegistry:
             except Exception as e:
                 print(f"MLflow registration failed: {e}")
         
-        print(f"✓ Registered model: {version_id}")
+        print(f"[OK] Registered model: {version_id}")
         return version_info
     
     def _get_next_version(self, name: str) -> int:
@@ -324,7 +324,7 @@ class ModelRegistry:
             except Exception:
                 pass
         
-        print(f"✓ Transitioned {name} v{version} to {stage.value}")
+        print(f"[OK] Transitioned {name} v{version} to {stage.value}")
         return version_info
     
     def get_model(
@@ -507,7 +507,7 @@ class ModelRegistry:
                     shutil.rmtree(version_dir)
                 
                 self._save_index()
-                print(f"✓ Deleted {name} v{version}")
+                print(f"[OK] Deleted {name} v{version}")
                 return True
         
         return False

@@ -66,7 +66,7 @@ class InferenceImageBuilder:
         Returns:
             Build result with image details
         """
-        await self._log("INFO", f"🐳 Building inference image: {image_name}:{image_tag}", "build.start")
+        await self._log("INFO", f"[DOCKER] Building inference image: {image_name}:{image_tag}", "build.start")
         
         # Full image name with optional registry
         if registry:
@@ -84,10 +84,10 @@ class InferenceImageBuilder:
             if docker_check.returncode != 0:
                 raise RuntimeError("Docker is not available or not running")
             
-            await self._log("INFO", "   ✅ Docker daemon is running", "build.check")
+            await self._log("INFO", "   [OK] Docker daemon is running", "build.check")
             
             # Build the image
-            await self._log("INFO", f"   📦 Building image from {package_dir}...", "build.docker")
+            await self._log("INFO", f"   [PACKAGE] Building image from {package_dir}...", "build.docker")
             
             build_cmd = [
                 "docker", "build",
@@ -104,14 +104,14 @@ class InferenceImageBuilder:
             )
             
             if build_result.returncode != 0:
-                await self._log("ERROR", f"   ❌ Build failed: {build_result.stderr}", "build.error")
+                await self._log("ERROR", f"   [ERROR] Build failed: {build_result.stderr}", "build.error")
                 return {
                     "success": False,
                     "error": build_result.stderr,
                     "image": None
                 }
             
-            await self._log("INFO", f"   ✅ Image built successfully: {full_image}", "build.success")
+            await self._log("INFO", f"   [OK] Image built successfully: {full_image}", "build.success")
             
             # Get image digest
             inspect_cmd = ["docker", "inspect", "--format", "{{.Id}}", full_image]
@@ -127,10 +127,10 @@ class InferenceImageBuilder:
             }
             
         except subprocess.TimeoutExpired:
-            await self._log("ERROR", "   ❌ Build timed out", "build.timeout")
+            await self._log("ERROR", "   [ERROR] Build timed out", "build.timeout")
             return {"success": False, "error": "Build timed out", "image": None}
         except Exception as e:
-            await self._log("ERROR", f"   ❌ Build error: {str(e)}", "build.error")
+            await self._log("ERROR", f"   [ERROR] Build error: {str(e)}", "build.error")
             return {"success": False, "error": str(e), "image": None}
     
     async def push_inference_image(
@@ -148,7 +148,7 @@ class InferenceImageBuilder:
         Returns:
             Push result
         """
-        await self._log("INFO", f"📤 Pushing image to {registry}...", "push.start")
+        await self._log("INFO", f"[PUSH] Pushing image to {registry}...", "push.start")
         
         try:
             # Login to registry if credentials are available
@@ -163,13 +163,13 @@ class InferenceImageBuilder:
             )
             
             if push_result.returncode != 0:
-                await self._log("ERROR", f"   ❌ Push failed: {push_result.stderr}", "push.error")
+                await self._log("ERROR", f"   [ERROR] Push failed: {push_result.stderr}", "push.error")
                 return {
                     "success": False,
                     "error": push_result.stderr,
                 }
             
-            await self._log("INFO", f"   ✅ Image pushed successfully", "push.success")
+            await self._log("INFO", f"   [OK] Image pushed successfully", "push.success")
             
             return {
                 "success": True,
@@ -178,10 +178,10 @@ class InferenceImageBuilder:
             }
             
         except subprocess.TimeoutExpired:
-            await self._log("ERROR", "   ❌ Push timed out", "push.timeout")
+            await self._log("ERROR", "   [ERROR] Push timed out", "push.timeout")
             return {"success": False, "error": "Push timed out"}
         except Exception as e:
-            await self._log("ERROR", f"   ❌ Push error: {str(e)}", "push.error")
+            await self._log("ERROR", f"   [ERROR] Push error: {str(e)}", "push.error")
             return {"success": False, "error": str(e)}
     
     async def build_and_publish(
@@ -279,7 +279,7 @@ class DeploymentService:
         
         Optionally builds and pushes a Docker image for the inference service.
         """
-        await self._log("INFO", f"🚀 Starting deployment package creation for {model_name}", "deployment.start")
+        await self._log("INFO", f"[DEPLOY] Starting deployment package creation for {model_name}", "deployment.start")
         
         # Create package directory
         package_dir = os.path.join(output_dir, f"deploy_{self.task_id[:12]}")
@@ -289,36 +289,36 @@ class DeploymentService:
         
         try:
             # Step 1: Copy trained model (fast)
-            await self._log("INFO", "📦 Step 1/6: Copying trained model...", "deployment.model")
+            await self._log("INFO", "[PACKAGE] Step 1/6: Copying trained model...", "deployment.model")
             model_dest = os.path.join(package_dir, "model.joblib")
             shutil.copy2(model_path, model_dest)
             model = joblib.load(model_path)
-            await self._log("INFO", "   ✅ Model packaged successfully", "deployment.model")
+            await self._log("INFO", "   [OK] Model packaged successfully", "deployment.model")
             
             # Step 2: Create preprocessing artifacts (fast)
-            await self._log("INFO", "🔧 Step 2/6: Creating preprocessing pipeline...", "deployment.preprocess")
+            await self._log("INFO", "[CONFIG] Step 2/6: Creating preprocessing pipeline...", "deployment.preprocess")
             preprocess_info = self._create_preprocessing_artifacts(df, target_column, package_dir)
-            await self._log("INFO", f"   ✅ Preprocessors saved ({len(preprocess_info['encoders'])} encoders)", "deployment.preprocess")
+            await self._log("INFO", f"   [OK] Preprocessors saved ({len(preprocess_info['encoders'])} encoders)", "deployment.preprocess")
             
             # Step 3: Save metadata (fast)
-            await self._log("INFO", "📋 Step 3/6: Saving feature metadata...", "deployment.metadata")
+            await self._log("INFO", "[LIST] Step 3/6: Saving feature metadata...", "deployment.metadata")
             metadata = self._create_metadata(df, target_column, model_name, model_type, metrics, preprocess_info)
             with open(os.path.join(package_dir, "metadata.json"), 'w') as f:
                 json.dump(metadata, f, indent=2, default=str)
-            await self._log("INFO", f"   ✅ Metadata saved ({metadata['n_features']} features)", "deployment.metadata")
+            await self._log("INFO", f"   [OK] Metadata saved ({metadata['n_features']} features)", "deployment.metadata")
             
             # Step 4: Generate inference API (fast)
-            await self._log("INFO", "🌐 Step 4/6: Generating production inference API...", "deployment.api")
+            await self._log("INFO", "[WEB] Step 4/6: Generating production inference API...", "deployment.api")
             self._generate_inference_api(metadata, package_dir)
-            await self._log("INFO", "   ✅ FastAPI inference code generated", "deployment.api")
+            await self._log("INFO", "   [OK] FastAPI inference code generated", "deployment.api")
             
             # Step 5: Generate Docker files (fast)
-            await self._log("INFO", "🐳 Step 5/6: Creating Docker configuration...", "deployment.docker")
+            await self._log("INFO", "[DOCKER] Step 5/6: Creating Docker configuration...", "deployment.docker")
             self._generate_docker_files(package_dir)
-            await self._log("INFO", "   ✅ Dockerfile and docker-compose.yml created", "deployment.docker")
+            await self._log("INFO", "   [OK] Dockerfile and docker-compose.yml created", "deployment.docker")
             
             # Step 6: Create zip archive (fast)
-            await self._log("INFO", "📦 Step 6/6: Creating deployment archive...", "deployment.archive")
+            await self._log("INFO", "[PACKAGE] Step 6/6: Creating deployment archive...", "deployment.archive")
             zip_path = f"{package_dir}.zip"
             with zipfile.ZipFile(zip_path, 'w', zipfile.ZIP_DEFLATED) as zipf:
                 for root, _, files in os.walk(package_dir):
@@ -326,7 +326,7 @@ class DeploymentService:
                         file_path = os.path.join(root, file)
                         arcname = os.path.relpath(file_path, package_dir)
                         zipf.write(file_path, arcname)
-            await self._log("INFO", f"   ✅ Archive created: {os.path.basename(zip_path)}", "deployment.archive")
+            await self._log("INFO", f"   [OK] Archive created: {os.path.basename(zip_path)}", "deployment.archive")
             
             result = {
                 "package_path": zip_path,
@@ -338,7 +338,7 @@ class DeploymentService:
             
             # Optional: Build Docker image
             if build_image and model_id:
-                await self._log("INFO", "🐳 Building inference Docker image...", "deployment.image")
+                await self._log("INFO", "[DOCKER] Building inference Docker image...", "deployment.image")
                 
                 image_result = await self.image_builder.build_and_publish(
                     package_dir=package_dir,
@@ -351,16 +351,16 @@ class DeploymentService:
                 result["image"] = image_result
                 
                 if image_result.get("success"):
-                    await self._log("INFO", f"   ✅ Image ready: {image_result.get('image')}", "deployment.image")
+                    await self._log("INFO", f"   [OK] Image ready: {image_result.get('image')}", "deployment.image")
                 else:
-                    await self._log("WARN", f"   ⚠️ Image build failed: {image_result.get('error')}", "deployment.image")
+                    await self._log("WARN", f"   [WARN] Image build failed: {image_result.get('error')}", "deployment.image")
             
-            await self._log("INFO", "🎉 Deployment package ready!", "deployment.complete")
+            await self._log("INFO", "[COMPLETE] Deployment package ready!", "deployment.complete")
             
             return result
             
         except Exception as e:
-            await self._log("ERROR", f"❌ Deployment failed: {str(e)}", "deployment.error")
+            await self._log("ERROR", f"[ERROR] Deployment failed: {str(e)}", "deployment.error")
             raise
     
     def _create_preprocessing_artifacts(self, df: pd.DataFrame, target_column: str, 
@@ -856,7 +856,7 @@ curl -X POST http://localhost:8080/predict \\
         import subprocess
         import hashlib
         
-        await self._log("INFO", f"🐳 Building inference image: {image_name}:{image_tag}", "inference.build")
+        await self._log("INFO", f"[DOCKER] Building inference image: {image_name}:{image_tag}", "inference.build")
         
         try:
             # Verify package directory exists
@@ -897,7 +897,7 @@ curl -X POST http://localhost:8080/predict \\
                 await self._log("ERROR", f"Docker build failed: {result.stderr}", "inference.error")
                 raise Exception(f"Docker build failed: {result.stderr}")
             
-            await self._log("INFO", f"✅ Image built successfully: {full_image_name}", "inference.build")
+            await self._log("INFO", f"[OK] Image built successfully: {full_image_name}", "inference.build")
             
             # Get image digest
             inspect_cmd = ["docker", "inspect", "--format", "{{.Id}}", full_image_name]
@@ -907,7 +907,7 @@ curl -X POST http://localhost:8080/predict \\
             # Push to registry if requested
             push_result = None
             if push and registry:
-                await self._log("INFO", f"📤 Pushing image to {registry}...", "inference.push")
+                await self._log("INFO", f"[PUSH] Pushing image to {registry}...", "inference.push")
                 
                 push_cmd = ["docker", "push", full_image_name]
                 push_result = subprocess.run(push_cmd, capture_output=True, text=True, timeout=600)
@@ -915,7 +915,7 @@ curl -X POST http://localhost:8080/predict \\
                 if push_result.returncode != 0:
                     await self._log("WARN", f"Push failed: {push_result.stderr}", "inference.push")
                 else:
-                    await self._log("INFO", f"✅ Image pushed successfully", "inference.push")
+                    await self._log("INFO", f"[OK] Image pushed successfully", "inference.push")
             
             return {
                 "status": "success",
@@ -963,7 +963,7 @@ curl -X POST http://localhost:8080/predict \\
         source_full = f"{image_name}:{source_tag}"
         target_full = f"{target_registry}/{image_name}:{target_tag}"
         
-        await self._log("INFO", f"📤 Publishing {source_full} → {target_full}", "inference.publish")
+        await self._log("INFO", f"[PUSH] Publishing {source_full} → {target_full}", "inference.publish")
         
         try:
             # Tag the image
@@ -980,7 +980,7 @@ curl -X POST http://localhost:8080/predict \\
             if push_result.returncode != 0:
                 raise Exception(f"Failed to push image: {push_result.stderr}")
             
-            await self._log("INFO", f"✅ Published to {target_full}", "inference.publish")
+            await self._log("INFO", f"[OK] Published to {target_full}", "inference.publish")
             
             return {
                 "status": "success",

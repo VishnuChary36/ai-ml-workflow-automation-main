@@ -110,7 +110,7 @@ class ExperimentManager:
         if self.tracker.is_available:
             self.tracker.create_experiment(name, tags=tags)
         
-        print(f"✓ Created experiment: {name}")
+        print(f"[OK] Created experiment: {name}")
         return experiment_info
     
     def log_run(
@@ -192,7 +192,7 @@ class ExperimentManager:
                         if os.path.exists(path):
                             ctx.log_artifact(path, name)
         
-        print(f"✓ Logged run: {run_name} to {experiment_name}")
+        print(f"[OK] Logged run: {run_name} to {experiment_name}")
         return run_info
     
     def _update_best_run(
@@ -473,7 +473,7 @@ class ExperimentManager:
         
         self._save_index()
         
-        print(f"✓ Archived experiment: {name}")
+        print(f"[OK] Archived experiment: {name}")
         return True
 
 

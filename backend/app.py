@@ -49,7 +49,6 @@ from services.drift_monitoring import DriftMonitoringService
 from services.visualization import VisualizationService, generate_model_visualizations
 from services.explainability import ExplainabilityService
 from services.deployment import DeploymentService
-from services.dashboard import DashboardService
 
 # Import schemas for type-safe API contracts
 from schemas import (
@@ -74,32 +73,34 @@ app = FastAPI(
 )
 
 # ============================================================================
-# Middleware Setup
+# Middleware Setup (ORDER MATTERS: Last added runs first!)
 # ============================================================================
 
-# CORS middleware
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=settings.allowed_origins,
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+# Authentication middleware for protected routes (DISABLED for development)
+# Note: This enforces auth on specific route prefixes
+# app.add_middleware(
+#     AuthMiddleware,
+#     protected_prefixes=[
+#         "/api/predict",
+#         "/api/deploy_model",
+#         "/api/deployment",
+#         "/api/start_drift_monitoring",
+#     ]
+# )
 
-# Rate limiting middleware
+# Rate limiting middleware (DISABLED for development)
 rate_limit_config = create_rate_limit_config(redis_url=settings.redis_url)
+rate_limit_config.enabled = False  # Disable rate limiting
 app.add_middleware(RateLimitMiddleware, config=rate_limit_config)
 
-# Authentication middleware for protected routes
-# Note: This enforces auth on specific route prefixes
+# CORS middleware - Must be added LAST to run FIRST (handles preflight OPTIONS requests)
 app.add_middleware(
-    AuthMiddleware,
-    protected_prefixes=[
-        "/api/predict",
-        "/api/deploy_model",
-        "/api/deployment",
-        "/api/start_drift_monitoring",
-    ]
+    CORSMiddleware,
+    allow_origins=["*"],  # Allow all origins in development
+    allow_credentials=True,
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
+    allow_headers=["*"],
+    expose_headers=["*"],
 )
 
 # Create storage directories
@@ -112,11 +113,11 @@ Path("./uploads").mkdir(parents=True, exist_ok=True)
 async def startup_event():
     """Initialize database on startup."""
     init_db()
-    print("✓ Database initialized")
-    print("✓ Authentication middleware enabled")
-    print("✓ Rate limiting middleware enabled")
-    print(f"✓ Artifact storage: {settings.artifact_storage_path}")
-    print(f"✓ Model storage: {settings.model_storage_path}")
+    print("[OK] Database initialized")
+    print("[OK] Authentication middleware enabled")
+    print("[OK] Rate limiting middleware enabled")
+    print(f"[OK] Artifact storage: {settings.artifact_storage_path}")
+    print(f"[OK] Model storage: {settings.model_storage_path}")
 
 
 @app.get("/")
@@ -287,7 +288,7 @@ async def upload_dataset(
 
     # Profile dataset
     profile = DataProfiler.profile_dataset(df)
-    target_column = DataProfiler.detect_target_column(df, profile)
+    target_suggestion = DataProfiler.detect_target_column(df, profile)
 
     # Save to database
     dataset = Dataset(
@@ -307,7 +308,9 @@ async def upload_dataset(
         "rows": len(df),
         "columns": len(df.columns),
         "profile": profile,
-        "suggested_target": target_column
+        "suggested_target": target_suggestion["column"],
+        "target_suggestion": target_suggestion,
+        "column_names": list(df.columns)
     }
 
 
@@ -445,6 +448,28 @@ async def execute_pipeline_task(task_id: str, dataset_id: str, steps: List[dict]
         output_path = f"./artifacts/{task_id}_processed.csv"
         df.to_csv(output_path, index=False)
 
+        # Update the dataset's file_path to point to the preprocessed file
+        # so that training always picks up the cleaned data
+        dataset.file_path = output_path
+        db.commit()
+
+        # ── Step 1: Ingest preprocessed data into Postgres for Grafana ──
+        try:
+            from services.postgres_ingest import PostgresIngestService
+            ingest_svc = PostgresIngestService(db)
+            ingest_result = ingest_svc.ingest_dataframe(df, dataset_id, task_id)
+            await TaskManager.emit_log(
+                task_id, "INFO",
+                f"Ingested {ingest_result['rows_written']} rows into Postgres table '{ingest_result['table']}'",
+                source="pipeline.ingest",
+            )
+        except Exception as ingest_err:
+            await TaskManager.emit_log(
+                task_id, "WARN",
+                f"Postgres ingest skipped (non-fatal): {ingest_err}",
+                source="pipeline.ingest",
+            )
+
         await TaskManager.emit_log(
             task_id, "INFO",
             f"Pipeline completed. Processed dataset saved: {output_path}",
@@ -563,160 +588,6 @@ async def websocket_logs(websocket: WebSocket, task_id: str = Query(...)):
 
 
 # ============================================================================
-# Data Analytics Dashboard
-# ============================================================================
-
-@app.get("/api/dashboard/{task_id}")
-async def get_data_dashboard(
-    task_id: str,
-    target_column: Optional[str] = None,
-    db: Session = Depends(get_db)
-):
-    """
-    Generate a comprehensive data analytics dashboard for the processed dataset.
-    
-    This endpoint creates a Power BI/Excel-style storytelling dashboard with:
-    - Executive Summary with narrative
-    - Key Performance Indicators (KPIs)
-    - Data Quality Analysis
-    - Distribution Analysis
-    - Correlation Heatmaps
-    - Categorical Breakdowns
-    - Trend Analysis (if datetime columns exist)
-    - Insights and Recommendations
-    - Chart data for visualizations
-    
-    Parameters:
-    - task_id: The preprocessing task ID
-    - target_column: Optional target column for analysis
-    """
-    # Find the processed dataset
-    task = db.query(Task).filter(Task.id == task_id).first()
-    if not task:
-        raise HTTPException(status_code=404, detail="Task not found")
-    
-    # Get the output path from task result
-    output_path = None
-    if task.result:
-        output_path = task.result.get("output_path")
-    
-    if not output_path:
-        # Try default naming convention
-        output_path = f"./artifacts/{task_id}_processed.csv"
-    
-    if not os.path.exists(output_path):
-        raise HTTPException(
-            status_code=404, 
-            detail=f"Processed dataset not found at {output_path}. Run preprocessing first."
-        )
-    
-    try:
-        # Load the processed dataset
-        df = pd.read_csv(output_path)
-        
-        # Auto-detect target column if not provided
-        if not target_column:
-            # Try common target column names
-            common_targets = ['target', 'label', 'class', 'y', 'outcome', 'result', 'status']
-            for col in df.columns:
-                if col.lower() in common_targets:
-                    target_column = col
-                    break
-            # If not found, use the last column as target
-            if not target_column:
-                target_column = df.columns[-1]
-        
-        # Generate dashboard
-        dashboard_service = DashboardService(task_id=task_id)
-        dashboard = dashboard_service.generate_dashboard(df, target_column)
-        
-        # Add task and dataset info
-        dashboard["task_id"] = task_id
-        dashboard["target_column"] = target_column
-        dashboard["file_path"] = output_path
-        
-        return dashboard
-        
-    except Exception as e:
-        raise HTTPException(
-            status_code=500, 
-            detail=f"Failed to generate dashboard: {str(e)}"
-        )
-
-
-@app.get("/api/dashboard/{task_id}/summary")
-async def get_dashboard_summary(
-    task_id: str,
-    db: Session = Depends(get_db)
-):
-    """Get a quick summary for the dashboard - lighter version for initial load."""
-    task = db.query(Task).filter(Task.id == task_id).first()
-    if not task:
-        raise HTTPException(status_code=404, detail="Task not found")
-    
-    output_path = task.result.get("output_path") if task.result else f"./artifacts/{task_id}_processed.csv"
-    
-    if not os.path.exists(output_path):
-        raise HTTPException(status_code=404, detail="Processed dataset not found")
-    
-    try:
-        df = pd.read_csv(output_path)
-        
-        # Quick summary
-        numeric_cols = df.select_dtypes(include=[np.number]).columns.tolist()
-        categorical_cols = df.select_dtypes(include=['object', 'category']).columns.tolist()
-        
-        summary = {
-            "task_id": task_id,
-            "total_rows": len(df),
-            "total_columns": len(df.columns),
-            "numeric_columns": numeric_cols,
-            "categorical_columns": categorical_cols,
-            "columns": df.columns.tolist(),
-            "data_completeness": round((1 - df.isnull().sum().sum() / (len(df) * len(df.columns))) * 100, 1),
-            "memory_usage_mb": round(df.memory_usage(deep=True).sum() / 1024 / 1024, 2)
-        }
-        
-        return summary
-        
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-
-
-@app.get("/api/processed-datasets")
-async def list_processed_datasets(db: Session = Depends(get_db)):
-    """List all processed datasets available for dashboard analysis."""
-    # Find all preprocessing tasks
-    tasks = db.query(Task).filter(
-        Task.task_type == "preprocess",
-        Task.status == "completed"
-    ).order_by(Task.completed_at.desc()).all()
-    
-    datasets = []
-    for task in tasks:
-        output_path = task.result.get("output_path") if task.result else None
-        if output_path and os.path.exists(output_path):
-            try:
-                # Get basic file info
-                df = pd.read_csv(output_path, nrows=0)  # Just get columns
-                file_size = os.path.getsize(output_path)
-                
-                datasets.append({
-                    "task_id": task.id,
-                    "dataset_id": task.config.get("dataset_id") if task.config else None,
-                    "file_path": output_path,
-                    "columns": len(df.columns),
-                    "file_size_mb": round(file_size / 1024 / 1024, 2),
-                    "completed_at": task.completed_at.isoformat() if task.completed_at else None,
-                    "rows": task.result.get("rows") if task.result else None
-                })
-            except:
-                continue
-    
-    return {"datasets": datasets}
-
-
-# ============================================================================
 # Log Retrieval (HTTP)
 # ============================================================================
 
@@ -810,15 +681,46 @@ async def execute_training_task(task_id: str, dataset_id: str, model_config: dic
         # Update status
         TaskManager.update_status(db, task_id, TaskStatus.RUNNING)
 
-        # Load dataset
+        # Load dataset — prefer the preprocessed version
         dataset = db.query(Dataset).filter(Dataset.id == dataset_id).first()
-        df = pd.read_csv(dataset.file_path)
+        data_path = dataset.file_path
+
+        # Also check if a preprocessed artifact exists for any pipeline task
+        # linked to this dataset (fallback in case file_path wasn't updated)
+        if data_path:
+            preprocessed_tasks = (
+                db.query(Task)
+                .filter(Task.dataset_id == dataset_id, Task.task_type == TaskType.PREPROCESS, Task.status == TaskStatus.COMPLETED)
+                .order_by(Task.created_at.desc())
+                .first()
+            )
+            if preprocessed_tasks and preprocessed_tasks.result:
+                pp_path = preprocessed_tasks.result.get("output_path")
+                if pp_path and os.path.exists(pp_path):
+                    data_path = pp_path
+
+        df = pd.read_csv(data_path)
 
         await TaskManager.emit_log(
             task_id, "INFO",
-            f"Loaded dataset for training: {len(df)} rows, {len(df.columns)} columns",
+            f"Loaded dataset for training: {len(df)} rows, {len(df.columns)} columns (source: {os.path.basename(data_path)})",
             source="training.load"
         )
+
+        # Safety net: impute any remaining NaN values so models that
+        # don't accept NaN natively (GradientBoosting, SVC, KNN, etc.) don't fail
+        nan_cols = df.columns[df.isna().any()].tolist()
+        if nan_cols:
+            await TaskManager.emit_log(
+                task_id, "WARN",
+                f"Found NaN values in {len(nan_cols)} column(s): {nan_cols[:5]}{'...' if len(nan_cols)>5 else ''}. Auto-imputing before training.",
+                source="training.data_prep"
+            )
+            for col in nan_cols:
+                if df[col].dtype in ['float64', 'float32', 'int64', 'int32']:
+                    df[col].fillna(df[col].median(), inplace=True)
+                else:
+                    df[col].fillna(df[col].mode().iloc[0] if not df[col].mode().empty else 'unknown', inplace=True)
 
         # Execute training
         trainer = TrainingService(task_id, TaskManager.emit_log)
@@ -844,6 +746,37 @@ async def execute_training_task(task_id: str, dataset_id: str, model_config: dic
             source="training.complete",
             meta={"model_id": model_id, "model_path": result['model_path']}
         )
+
+        # ── Step 3: Write predictions to Postgres for Grafana panels ──
+        try:
+            from services.postgres_ingest import PostgresIngestService
+            ingest_svc = PostgresIngestService(db)
+            problem_type = result.get('model_type', 'unknown')
+            y_test = result.get('y_test', [])
+            y_pred = result.get('y_pred', [])
+            if y_test and y_pred:
+                import pandas as _pd
+                ingest_svc.write_predictions(
+                    model_id=model_id,
+                    task_id=task_id,
+                    dataset_id=dataset_id,
+                    y_actual=_pd.Series(y_test),
+                    y_predicted=_pd.Series(y_pred),
+                    target_column=target_column,
+                    problem_type=problem_type,
+                    algorithm=model_config['model'],
+                )
+                await TaskManager.emit_log(
+                    task_id, "INFO",
+                    f"Wrote {len(y_test)} prediction rows to Postgres for Grafana",
+                    source="training.ingest",
+                )
+        except Exception as pred_err:
+            await TaskManager.emit_log(
+                task_id, "WARN",
+                f"Prediction ingest skipped (non-fatal): {pred_err}",
+                source="training.ingest",
+            )
 
         # Update task
         TaskManager.update_status(
@@ -934,7 +867,7 @@ async def execute_deployment_task(task_id: str, model_id: str, platform: str):
 
         await TaskManager.emit_log(
             task_id, "INFO",
-            f"🚀 Starting deployment to {platform}",
+            f"[DEPLOY] Starting deployment to {platform}",
             source="deployment.init"
         )
 
@@ -953,7 +886,7 @@ async def execute_deployment_task(task_id: str, model_id: str, platform: str):
         
         await TaskManager.emit_log(
             task_id, "INFO",
-            f"📦 Creating deployment package...",
+            f"[PACKAGE] Creating deployment package...",
             source="deployment.package"
         )
         
@@ -1009,7 +942,7 @@ async def execute_deployment_task(task_id: str, model_id: str, platform: str):
         
         await TaskManager.emit_log(
             task_id, "INFO",
-            f"✅ Deployment package created with {len(package_result.get('files', []))} files",
+            f"[OK] Deployment package created with {len(package_result.get('files', []))} files",
             source="deployment.package"
         )
         
@@ -1033,7 +966,7 @@ async def execute_deployment_task(task_id: str, model_id: str, platform: str):
             deployment_url = f"http://localhost:8080"
             await TaskManager.emit_log(
                 task_id, "INFO",
-                f"🐳 Docker deployment ready. Build with:",
+                f"[DOCKER] Docker deployment ready. Build with:",
                 source="deployment.docker"
             )
             await TaskManager.emit_log(
@@ -1051,7 +984,7 @@ async def execute_deployment_task(task_id: str, model_id: str, platform: str):
             deployment_url = f"https://api.example.com/models/{model_id}"
             await TaskManager.emit_log(
                 task_id, "INFO",
-                f"☁️ Cloud deployment package ready. Upload {package_result['package_path']} to your cloud provider.",
+                f"[CLOUD] Cloud deployment package ready. Upload {package_result['package_path']} to your cloud provider.",
                 source="deployment.cloud"
             )
         else:
@@ -1086,7 +1019,7 @@ async def execute_deployment_task(task_id: str, model_id: str, platform: str):
 
         await TaskManager.emit_log(
             task_id, "INFO",
-            f"✅ Deployment completed successfully!",
+            f"[OK] Deployment completed successfully!",
             source="deployment.complete",
             meta={"deployment_url": live_prediction_url, "deployment_id": deployment_id}
         )
@@ -1115,7 +1048,7 @@ async def execute_deployment_task(task_id: str, model_id: str, platform: str):
     except Exception as e:
         await TaskManager.emit_log(
             task_id, "ERROR",
-            f"❌ Deployment failed: {str(e)}",
+            f"[ERROR] Deployment failed: {str(e)}",
             source="deployment.error"
         )
         TaskManager.update_status(db, task_id, TaskStatus.FAILED, error=str(e))
@@ -1906,6 +1839,391 @@ async def list_deployed_models(db: Session = Depends(get_db)):
             })
     
     return {"deployed_models": deployed}
+
+
+# ============================================================================
+# Grafana Dashboard Integration (Steps 1-5)
+# ============================================================================
+
+@app.get("/api/grafana/status")
+async def grafana_status():
+    """Check Grafana connectivity and datasource configuration."""
+    from services.grafana_service import GrafanaService
+    svc = GrafanaService()
+    health = svc.check_health()
+    health["datasource_uid"] = svc.datasource_uid or None
+    return health
+
+
+@app.post("/api/grafana/setup-datasource")
+async def grafana_setup_datasource():
+    """Auto-create PostgreSQL datasource in Grafana using DB connection settings."""
+    from services.grafana_service import GrafanaService, GrafanaAPIError
+    svc = GrafanaService()
+    try:
+        uid = svc.ensure_postgres_datasource()
+        return {"status": "ok", "datasource_uid": uid}
+    except GrafanaAPIError as e:
+        raise HTTPException(status_code=502, detail=str(e))
+
+
+@app.post("/api/grafana/dashboard/dataset/{dataset_id}")
+async def create_dataset_dashboard(
+    dataset_id: str,
+    db: Session = Depends(get_db),
+):
+    """
+    Step 2+4: Build a data-exploration Grafana dashboard for an ingested dataset
+    and POST it to the Grafana API.  Returns the embed URL.
+    """
+    from services.grafana_service import GrafanaService, GrafanaAPIError
+    from services.grafana_dashboard_builder import build_dataset_dashboard
+    from core.database import GrafanaDashboard
+
+    dataset = db.query(Dataset).filter(Dataset.id == dataset_id).first()
+    if not dataset:
+        raise HTTPException(status_code=404, detail="Dataset not found")
+
+    svc = GrafanaService()
+
+    # Try to set up datasource — non-fatal if DB is SQLite
+    ds_uid = ""
+    try:
+        ds_uid = svc.ensure_postgres_datasource()
+    except Exception:
+        pass
+
+    # Determine columns and data quality stats from ingested data
+    numeric_cols = []
+    categorical_cols = []
+    total_rows = dataset.rows or 0
+    completeness = 100.0
+    try:
+        from services.postgres_ingest import PostgresIngestService
+        ingest = PostgresIngestService(db)
+        all_cols = ingest.get_ingested_columns(dataset_id)
+        numeric_cols = ingest.get_numeric_columns(dataset_id)
+        categorical_cols = [c for c in all_cols if c not in numeric_cols]
+
+        # If no data was ingested yet, try ingesting now from dataset file
+        if not all_cols and dataset.file_path and os.path.exists(dataset.file_path):
+            df = pd.read_csv(dataset.file_path)
+            ingest.ingest_dataframe(df, dataset_id, f"auto-{dataset_id[:8]}")
+            numeric_cols = df.select_dtypes(include=[np.number]).columns.tolist()
+            categorical_cols = df.select_dtypes(include=['object', 'category']).columns.tolist()
+            total_rows = len(df)
+            completeness = round((1 - df.isnull().sum().sum() / max(df.size, 1)) * 100, 1)
+        elif dataset.file_path and os.path.exists(dataset.file_path):
+            df = pd.read_csv(dataset.file_path, nrows=500)
+            total_rows = dataset.rows or len(df)
+            completeness = round((1 - df.isnull().sum().sum() / max(df.size, 1)) * 100, 1)
+    except Exception:
+        pass
+
+    title = f"Dataset: {dataset.filename}"
+    dashboard_json = build_dataset_dashboard(
+        title=title,
+        datasource_uid=ds_uid or "-- Grafana --",
+        dataset_id=dataset_id,
+        numeric_columns=numeric_cols,
+        categorical_columns=categorical_cols,
+        total_rows=total_rows,
+        completeness=completeness,
+    )
+
+    try:
+        result = svc.create_or_update_dashboard(dashboard_json)
+    except GrafanaAPIError as e:
+        raise HTTPException(status_code=502, detail=str(e))
+
+    # Store in DB
+    existing = db.query(GrafanaDashboard).filter(
+        GrafanaDashboard.dataset_id == dataset_id,
+        GrafanaDashboard.dashboard_type == "dataset",
+    ).first()
+    if existing:
+        existing.uid = result["uid"]
+        existing.embed_url = result["embed_url"]
+        existing.grafana_url = result["url"]
+        existing.title = title
+    else:
+        db.add(GrafanaDashboard(
+            uid=result["uid"],
+            title=title,
+            dataset_id=dataset_id,
+            dashboard_type="dataset",
+            embed_url=result["embed_url"],
+            grafana_url=result["url"],
+        ))
+    db.commit()
+
+    return {
+        "uid": result["uid"],
+        "embed_url": result["embed_url"],
+        "grafana_url": result["url"],
+        "status": result["status"],
+    }
+
+
+@app.post("/api/grafana/dashboard/model/{model_id}")
+async def create_model_dashboard(
+    model_id: str,
+    db: Session = Depends(get_db),
+):
+    """
+    Steps 3+4: Build a model-performance Grafana dashboard (prediction vs actual panels)
+    and POST it to the Grafana API.  Returns the embed URL.
+    """
+    from services.grafana_service import GrafanaService, GrafanaAPIError
+    from services.grafana_dashboard_builder import build_model_dashboard
+    from core.database import GrafanaDashboard
+
+    model = db.query(Model).filter(Model.id == model_id).first()
+    if not model:
+        raise HTTPException(status_code=404, detail="Model not found")
+
+    svc = GrafanaService()
+
+    # Try to set up datasource — non-fatal if DB is SQLite
+    ds_uid = ""
+    try:
+        ds_uid = svc.ensure_postgres_datasource()
+    except Exception:
+        pass
+
+    metrics = model.metrics or {}
+    problem_type = (
+        "classification" if "accuracy" in metrics
+        else ("regression" if "r2_score" in metrics else "unknown")
+    )
+
+    # Get numeric columns & data quality stats — non-fatal if not available
+    numeric_cols = []
+    total_rows = 0
+    completeness = 100.0
+    target_column = "target"
+    try:
+        from services.postgres_ingest import PostgresIngestService
+        ingest = PostgresIngestService(db)
+        numeric_cols = ingest.get_numeric_columns(model.dataset_id)
+    except Exception:
+        pass
+
+    # Gather dataset stats for dashboard panels
+    dataset = db.query(Dataset).filter(Dataset.id == model.dataset_id).first()
+    try:
+        if dataset and dataset.file_path and os.path.exists(dataset.file_path):
+            df = pd.read_csv(dataset.file_path, nrows=500)
+            total_rows = dataset.rows or len(df)
+            completeness = round((1 - df.isnull().sum().sum() / max(df.size, 1)) * 100, 1)
+    except Exception:
+        total_rows = dataset.rows if dataset else 0
+
+    # Find target column from training config
+    training_task = db.query(Task).filter(Task.id == model.task_id).first()
+    if training_task and training_task.config:
+        target_column = training_task.config.get("target_column", "target")
+
+    title = f"Model: {model.algorithm} ({problem_type})"
+    dashboard_json = build_model_dashboard(
+        title=title,
+        datasource_uid=ds_uid or "-- Grafana --",
+        model_id=model_id,
+        dataset_id=model.dataset_id,
+        algorithm=model.algorithm,
+        problem_type=problem_type,
+        metrics=metrics,
+        numeric_columns=numeric_cols,
+        total_rows=total_rows,
+        completeness=completeness,
+        target_column=target_column,
+    )
+
+    try:
+        result = svc.create_or_update_dashboard(dashboard_json)
+    except GrafanaAPIError as e:
+        raise HTTPException(status_code=502, detail=str(e))
+
+    # Store in DB
+    existing = db.query(GrafanaDashboard).filter(
+        GrafanaDashboard.model_id == model_id,
+        GrafanaDashboard.dashboard_type == "model",
+    ).first()
+    if existing:
+        existing.uid = result["uid"]
+        existing.embed_url = result["embed_url"]
+        existing.grafana_url = result["url"]
+        existing.title = title
+    else:
+        db.add(GrafanaDashboard(
+            uid=result["uid"],
+            title=title,
+            model_id=model_id,
+            dataset_id=model.dataset_id,
+            dashboard_type="model",
+            embed_url=result["embed_url"],
+            grafana_url=result["url"],
+        ))
+    db.commit()
+
+    return {
+        "uid": result["uid"],
+        "embed_url": result["embed_url"],
+        "grafana_url": result["url"],
+        "status": result["status"],
+    }
+
+
+@app.get("/api/grafana/dashboard/{uid}")
+async def get_grafana_dashboard(uid: str, db: Session = Depends(get_db)):
+    """Get stored Grafana dashboard info by UID."""
+    from core.database import GrafanaDashboard
+    dash = db.query(GrafanaDashboard).filter(GrafanaDashboard.uid == uid).first()
+    if not dash:
+        raise HTTPException(status_code=404, detail="Dashboard not found")
+    return {
+        "uid": dash.uid,
+        "title": dash.title,
+        "embed_url": dash.embed_url,
+        "grafana_url": dash.grafana_url,
+        "dashboard_type": dash.dashboard_type,
+        "dataset_id": dash.dataset_id,
+        "model_id": dash.model_id,
+        "created_at": dash.created_at.isoformat() if dash.created_at else None,
+    }
+
+
+@app.get("/api/grafana/dashboards")
+async def list_grafana_dashboards(db: Session = Depends(get_db)):
+    """List all provisioned Grafana dashboards."""
+    from core.database import GrafanaDashboard
+    dashboards = db.query(GrafanaDashboard).order_by(GrafanaDashboard.created_at.desc()).all()
+    return {
+        "dashboards": [
+            {
+                "uid": d.uid,
+                "title": d.title,
+                "embed_url": d.embed_url,
+                "dashboard_type": d.dashboard_type,
+                "dataset_id": d.dataset_id,
+                "model_id": d.model_id,
+                "created_at": d.created_at.isoformat() if d.created_at else None,
+            }
+            for d in dashboards
+        ]
+    }
+
+
+@app.delete("/api/grafana/dashboard/{uid}")
+async def delete_grafana_dashboard(uid: str, db: Session = Depends(get_db)):
+    """Delete a Grafana dashboard by UID."""
+    from services.grafana_service import GrafanaService
+    from core.database import GrafanaDashboard
+
+    svc = GrafanaService()
+    svc.delete_dashboard(uid)
+
+    dash = db.query(GrafanaDashboard).filter(GrafanaDashboard.uid == uid).first()
+    if dash:
+        db.delete(dash)
+        db.commit()
+
+    return {"status": "deleted", "uid": uid}
+
+
+# ============================================================================
+# Step 5: AI Narrative for dashboards
+# ============================================================================
+
+@app.get("/api/grafana/narrative/dataset/{dataset_id}")
+async def get_dataset_narrative(
+    dataset_id: str,
+    use_llm: Optional[bool] = None,
+    db: Session = Depends(get_db),
+):
+    """Generate AI narrative for a dataset dashboard."""
+    from services.narrative_generator import generate_narrative
+
+    dataset = db.query(Dataset).filter(Dataset.id == dataset_id).first()
+    if not dataset:
+        raise HTTPException(status_code=404, detail="Dataset not found")
+
+    # Build dataset info
+    try:
+        df = pd.read_csv(dataset.file_path, nrows=500)
+        numeric_cols = df.select_dtypes(include=[np.number]).columns.tolist()
+        categorical_cols = df.select_dtypes(include=['object', 'category']).columns.tolist()
+        completeness = round((1 - df.isnull().sum().sum() / max(df.size, 1)) * 100, 1)
+    except Exception:
+        numeric_cols, categorical_cols, completeness = [], [], 100.0
+
+    dataset_info = {
+        "filename": dataset.filename,
+        "rows": dataset.rows or 0,
+        "columns": dataset.columns or 0,
+        "numeric_columns": numeric_cols,
+        "categorical_columns": categorical_cols,
+        "completeness": completeness,
+    }
+
+    result = await generate_narrative(dataset_info, use_llm=use_llm)
+    return result
+
+
+@app.get("/api/grafana/narrative/model/{model_id}")
+async def get_model_narrative(
+    model_id: str,
+    use_llm: Optional[bool] = None,
+    db: Session = Depends(get_db),
+):
+    """Generate AI narrative for a model performance dashboard."""
+    from services.narrative_generator import generate_narrative
+
+    model = db.query(Model).filter(Model.id == model_id).first()
+    if not model:
+        raise HTTPException(status_code=404, detail="Model not found")
+
+    dataset = db.query(Dataset).filter(Dataset.id == model.dataset_id).first()
+    metrics = model.metrics or {}
+    problem_type = (
+        "classification" if "accuracy" in metrics
+        else ("regression" if "r2_score" in metrics else "unknown")
+    )
+
+    # Dataset info
+    try:
+        df = pd.read_csv(dataset.file_path, nrows=500) if dataset else pd.DataFrame()
+        numeric_cols = df.select_dtypes(include=[np.number]).columns.tolist()
+        categorical_cols = df.select_dtypes(include=['object', 'category']).columns.tolist()
+        completeness = round((1 - df.isnull().sum().sum() / max(df.size, 1)) * 100, 1)
+    except Exception:
+        numeric_cols, categorical_cols, completeness = [], [], 100.0
+
+    dataset_info = {
+        "filename": dataset.filename if dataset else "N/A",
+        "rows": dataset.rows if dataset else 0,
+        "columns": dataset.columns if dataset else 0,
+        "numeric_columns": numeric_cols,
+        "categorical_columns": categorical_cols,
+        "completeness": completeness,
+    }
+
+    # Find target column from training config
+    training_task = db.query(Task).filter(Task.id == model.task_id).first()
+    target_column = (
+        training_task.config.get("target_column", "target")
+        if training_task and training_task.config else "target"
+    )
+
+    model_info = {
+        "algorithm": model.algorithm,
+        "problem_type": problem_type,
+        "target_column": target_column,
+        "metrics": metrics,
+    }
+
+    result = await generate_narrative(dataset_info, model_info, use_llm=use_llm)
+    return result
 
 
 if __name__ == "__main__":

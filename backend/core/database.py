@@ -84,6 +84,23 @@ class DriftAlert(Base):
     message = Column(Text)
 
 
+class GrafanaDashboard(Base):
+    """Tracks provisioned Grafana dashboards."""
+    __tablename__ = "grafana_dashboards"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    uid = Column(String, nullable=False, unique=True)          # Grafana dashboard UID
+    title = Column(String, nullable=False)
+    dataset_id = Column(String, nullable=True)
+    model_id = Column(String, nullable=True)
+    dashboard_type = Column(String, default="dataset")         # dataset | model
+    embed_url = Column(String, nullable=True)
+    grafana_url = Column(String, nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    meta = Column(JSON, nullable=True)                         # extra metadata (narrative, etc.)
+
+
 # Database engine and session
 engine = None
 SessionLocal = None
@@ -93,7 +110,12 @@ def init_db():
     """Initialize database connection."""
     global engine, SessionLocal
     
-    engine = create_engine(settings.database_url)
+    # Handle SQLite connection args
+    connect_args = {}
+    if settings.database_url.startswith("sqlite"):
+        connect_args["check_same_thread"] = False
+    
+    engine = create_engine(settings.database_url, connect_args=connect_args)
     SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
     
     # Create tables

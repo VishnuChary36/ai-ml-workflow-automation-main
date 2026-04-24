@@ -353,10 +353,10 @@ class AlertManager:
     def _notify_log(self, alert: Alert):
         """Log alert."""
         severity_emoji = {
-            AlertSeverity.INFO: "ℹ️",
-            AlertSeverity.WARNING: "⚠️",
+            AlertSeverity.INFO: "[INFO]",
+            AlertSeverity.WARNING: "[WARN]",
             AlertSeverity.CRITICAL: "🔴",
-            AlertSeverity.EMERGENCY: "🚨",
+            AlertSeverity.EMERGENCY: "[ALERT]",
         }
         emoji = severity_emoji.get(alert.severity, "📢")
         print(f"{emoji} ALERT: {alert.message}")
